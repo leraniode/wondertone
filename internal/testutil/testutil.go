@@ -1,7 +1,5 @@
 // Package testutil provides lightweight test assertion helpers.
-// Exists because gopkg.in (a testify transitive dependency) is unreachable
-// in the current build environment.
-// API mirrors testify/assert so tests can migrate easily later.
+
 package testutil
 
 import (
