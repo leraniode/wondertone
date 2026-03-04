@@ -1,0 +1,21 @@
+version: "2"
+
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - typecheck
+    - gocritic
+    - gofmt
+    - misspell
+    - unconvert
+    - whitespace
+
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

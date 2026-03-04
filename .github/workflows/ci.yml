@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }} / go${{ matrix.go }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go: ["1.22", "1.23"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go ${{ matrix.go }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          cache: true
+      - name: Verify dependencies
+        run: go mod verify
+      - name: go vet
+        run: go vet ./core/... ./palette/... ./colour/... ./render/... ./wtone/...
+      - name: Run tests
+        run: go test -race -coverprofile=coverage.out -covermode=atomic ./core/... ./palette/... ./palette/builtin/... ./colour/... ./render/... ./wtone/...
+      - name: Upload coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.go == '1.23'
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.out
+          flags: unittests
+          fail_ci_if_error: false
+
+  test-adapters:
+    name: Test adapters
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+      - name: Test go-colorful adapter
+        working-directory: adapters/colorful
+        run: |
+          go mod tidy
+          go test -race ./...
+      - name: Build lipgloss adapter
+        working-directory: adapters/lipgloss
+        run: |
+          go mod tidy
+          go build ./...
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+
+  tidy:
+    name: go mod tidy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: Check core
+        run: go mod tidy && git diff --exit-code go.mod go.sum
+      - name: Check adapters/colorful
+        working-directory: adapters/colorful
+        run: go mod tidy && git diff --exit-code go.mod go.sum
+      - name: Check adapters/lipgloss
+        working-directory: adapters/lipgloss
+        run: go mod tidy && git diff --exit-code go.mod go.sum
