@@ -1,3 +1,9 @@
+<p align="left">
+    <a href="https://github.com/leraniode/wondertone">
+        <img src="https://raw.githubusercontent.com/leraniode/.github/main/assets/images/wondertonebrandimage.svg" width="1024" />
+    </a>
+</p>
+
 # ✨ wondertone 🌈🎨
 
 A perceptual color intelligence library for Go — OKLCH under the hood, a human vocabulary on the surface.
@@ -6,8 +12,14 @@ A perceptual color intelligence library for Go — OKLCH under the hood, a human
 > Wondertone is still in early development, colours may look not beautiful and stylish yet, but I am making researches on colour math and systems.
 > Feel free to open issues and discussions. Feedback and contributions welcome!
 
-![wondertone preview](assets/example.png)
-*image from [example](./example/main.go)*
+[![CI](https://github.com/leraniode/wondertone/actions/workflows/ci.yml/badge.svg)](https://github.com/leraniode/wondertone/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/leraniode/wondertone.svg)](https://pkg.go.dev/github.com/leraniode/wondertone)
+[![License](https://img.shields.io/github/license/leraniode/wondertone)](https://github.com/leraniode/wondertone/blob/main/LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/leraniode/wondertone)](https://goreportcard.com/report/github.com/leraniode/wondertone)
+[![Version](https://img.shields.io/github/v/tag/leraniode/wondertone)](https://github.com/leraniode/wondertone/releases)
+[![lipgloss adapter version](https://pkg.go.dev/github.com/leraniode/wondertone/adapters/lipgloss?tab=versions&color=blue)](https://pkg.go.dev/github.com/leraniode/wondertone/adapters/lipgloss)
+[![go-colourful adapter version](https://pkg.go.dev/github.com/leraniode/wondertone/adapters/colorful?tab=versions&color=blue)](https://pkg.go.dev/github.com/leraniode/wondertone/adapters/colorful)
+[![Go Modules](https://img.shields.io/github/go-mod/go-version/leraniode/wondertone)](https://github.com/leraniode/wondertone/blob/main/go.mod)
 
 
 
@@ -360,18 +372,103 @@ data, err := wtone.MarshalWTone(p)
 
 ---
 
+## Adapters
+
+Wondertone has Adapters for two libraries:
+- [Lipgloss](https://github.com/charmbracelet/lipgloss)
+- [go-colourful](https://github.com/lucasb-eyer/go-colourful)
+
+The adapters convert between wondertone's OKLCH and the target library's color model, so you can use wondertone's colour intelligence in your existing projects without a full rewrite.
+
+They are located in the `adapters/` package, as a seperate module
+
+### Installing the adapters
+#### Lipgloss adapter
+
+```bash
+go get github.com/leraniode/wondertone/adapters/lipgloss
+```
+
+#### go-colourful adapter
+
+```bash
+go get github.com/leraniode/wondertone/adapters/colourful
+```
+
+Each adapter has its respective dependency and `wondertone` as a dependency.
+
+### Usage
+#### Lipgloss adapter
+
+Import the adapter as wtlip to avoid conflict with lipgloss package API:
+
+```go
+package main
+
+import (
+    "fmt"
+
+    tone    "github.com/leraniode/wondertone/core"
+    "github.com/leraniode/wondertone/palette/builtin"
+    wtlip   "github.com/leraniode/wondertone/adapters/lipgloss"
+)
+
+// Simplest usage — foreground style from a tone
+style := wtlip.FG(colour.Unix)
+fmt.Println(style.Render("hello, wondertone"))
+
+// Full style builder
+style := wtlip.Style(colour.Unix).
+    Background(colour.Void).
+    Bold(true).
+    Padding(0, 1)
+fmt.Println(style.Render("hello"))
+
+// Palette → full style map
+styles := wtlip.PaletteStyles(builtin.Midnight())
+fmt.Println(styles["Midnight Accent"].Render("accent text"))
+```
+
+#### go-colourful adapter
+
+Import the adapter as wcolourful to avoid conflict with go-colourful package API:
+
+```go
+package main
+
+import (
+    tone      "github.com/leraniode/wondertone/core"
+    wcolorful "github.com/leraniode/wondertone/adapters/colorful"
+)
+
+// wondertone → go-colorful
+cf := wcolorful.ToColorful(myTone)
+lab, _ := cf.Lab()
+
+// go-colorful → wondertone
+t := wcolorful.FromColorful(cf)
+fmt.Println(t.Hex())
+```
+
+
+---
+
 ## Package layout
 
 ```
 wondertone/
-├── core/              Tone type, OKLCH pipeline, gamut, mix, scale
-├── palette/           Palette, harmony, contrast
-│   └── builtin/       Midnight, Aurora, Ember, Glacier, Rosewood
-├── colour/            Leraniode named tones (one file per tone)
-├── render/            Terminal output, profile detection, lipgloss adapter
-├── wtone/             .wtone file load/save
+├── adapters/            Lipgloss and go-colourful adapters (seperate module with dependencies)
+│   ├── lipgloss/        Lipgloss adapter
+│   └── colourful/       go-colourful adapter
+├── example/main.go      Example code demonstrating usage
+├── core/                Tone type, OKLCH pipeline, gamut, mix, scale
+├── palette/             Palette, harmony, contrast
+│   └── builtin/         Midnight, Aurora, Ember, Glacier, Rosewood
+├── colour/              Leraniode named tones (one file per tone)
+├── render/              Terminal output, profile detection, lipgloss adapter
+├── wtone/               .wtone file load/save
 └── internal/
-    └── testutil/      Zero-dependency test helpers
+    └── testutil/        Zero-dependency test helpers
 ```
 
 **Dependencies:** `github.com/BurntSushi/toml` (wtone only). The `core/`, `palette/`, `colour/`, and `render/` packages have **zero external dependencies**.
