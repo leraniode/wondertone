@@ -405,28 +405,20 @@ Import the adapter as wtlip to avoid conflict with lipgloss package API:
 ```go
 package main
 
-import (
-    "fmt"
 
-    tone    "github.com/leraniode/wondertone/core"
-    "github.com/leraniode/wondertone/palette/builtin"
-    wtlip   "github.com/leraniode/wondertone/adapters/lipgloss"
+import (
+   tone  "github.com/leraniode/wondertone/core"
+   wtlip "github.com/leraniode/wondertone/adapters/lipgloss"
 )
 
-// Simplest usage — foreground style from a tone
-style := wtlip.FG(colour.Unix)
-fmt.Println(style.Render("hello, wondertone"))
+wtlip.FG(colour.Unix).Bold(true).Render("hello")
 
-// Full style builder
-style := wtlip.Style(colour.Unix).
-    Background(colour.Void).
-    Bold(true).
-    Padding(0, 1)
-fmt.Println(style.Render("hello"))
+wtlip.Style(colour.Unix).
+   Background(colour.Void).
+   Padding(0, 1).
+   Render("hello")
 
-// Palette → full style map
-styles := wtlip.PaletteStyles(builtin.Midnight())
-fmt.Println(styles["Midnight Accent"].Render("accent text"))
+wtlip.PaletteStyles(builtin.Midnight()) // map[name]lipgloss.Style
 ```
 
 #### go-colourful adapter

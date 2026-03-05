@@ -13,20 +13,23 @@ import (
 )
 
 func init() {
-	// Force TrueColor in tests so output is deterministic
+	// Force TrueColor so lipgloss emits ANSI codes in the test environment.
+	// SetProfile syncs both wondertone and lipgloss's default renderer.
 	wtlip.SetProfile(render.TrueColor)
 }
 
 func TestColorReturnsHexInTrueColor(t *testing.T) {
 	c := wtlip.Color(colour.Unix)
-	testutil.Equal(t, string(c), colour.Unix.Hex())
+	testutil.Equal(t, colour.Unix.Hex(), string(c))
 }
 
 func TestFGProducesStyledText(t *testing.T) {
 	style := wtlip.FG(colour.Unix)
 	rendered := style.Render("hello")
-	testutil.True(t, strings.Contains(rendered, "hello"), "rendered text should contain original string")
-	testutil.True(t, len(rendered) > len("hello"), "styled text should be longer than raw text")
+	testutil.True(t, strings.Contains(rendered, "hello"),
+		"rendered text should contain original string")
+	testutil.True(t, len(rendered) > len("hello"),
+		"styled text should be longer than raw text (ANSI codes expected)")
 }
 
 func TestBGProducesStyledText(t *testing.T) {
@@ -47,7 +50,6 @@ func TestStyleBuilder(t *testing.T) {
 
 func TestStyleBuilderLipgloss(t *testing.T) {
 	ls := wtlip.Style(colour.Unix).Lipgloss()
-	// Should be a valid lipgloss style — Render shouldn't panic
 	result := ls.Render("ok")
 	testutil.True(t, strings.Contains(result, "ok"))
 }
@@ -74,19 +76,27 @@ func TestAdaptiveStylePicksCorrectVariant(t *testing.T) {
 	lightStyle := wtlip.AdaptiveStyle(onLight, onDark, lightBg)
 	darkStyle  := wtlip.AdaptiveStyle(onLight, onDark, darkBg)
 
-	// On a light bg, Ink's hex should appear in the escape sequence
+	// Both should render the text
 	testutil.True(t, strings.Contains(lightStyle.Render("x"), "x"))
 	testutil.True(t, strings.Contains(darkStyle.Render("x"), "x"))
 
-	// The two should produce different sequences
+	// The underlying colours should differ — Ink hex vs Paper hex
+	// We verify this through Color() directly, which is reliable and
+	// not subject to ANSI downsampling edge cases.
+	inkColor   := string(wtlip.Color(colour.Ink))
+	paperColor := string(wtlip.Color(colour.Paper))
+	testutil.True(t, inkColor != paperColor,
+		"Ink and Paper should produce different lipgloss.Color values")
+
+	// In TrueColor mode, rendered output must also differ
 	testutil.True(t,
 		lightStyle.Render("x") != darkStyle.Render("x"),
 		"adaptive style should differ for light vs dark background")
 }
 
 func TestColorHexAlwaysHex(t *testing.T) {
-	wtlip.SetProfile(render.ANSI256) // switch to 256
-	c := wtlip.ColorHex(colour.Unix) // should still be hex
+	wtlip.SetProfile(render.ANSI256)
+	c := wtlip.ColorHex(colour.Unix) // ColorHex ignores profile
 	testutil.True(t, strings.HasPrefix(string(c), "#"))
-	wtlip.SetProfile(render.TrueColor) // restore
+	wtlip.SetProfile(render.TrueColor) // restore for other tests
 }

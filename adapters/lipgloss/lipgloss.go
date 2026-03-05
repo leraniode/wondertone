@@ -7,69 +7,85 @@
 // Usage:
 //
 //	import (
-//	    tone    "github.com/leraniode/wondertone/core"
-//	    "github.com/leraniode/wondertone/palette/builtin"
-//	    wtlip   "github.com/leraniode/wondertone/adapters/lipgloss"
+//	    tone  "github.com/leraniode/wondertone/core"
+//	    wtlip "github.com/leraniode/wondertone/adapters/lipgloss"
 //	)
 //
-//	// Simplest usage — foreground style from a tone
-//	style := wtlip.FG(colour.Unix)
-//	fmt.Println(style.Render("hello, wondertone"))
+//	wtlip.FG(colour.Unix).Bold(true).Render("hello")
 //
-//	// Full style builder
-//	style := wtlip.Style(colour.Unix).
+//	wtlip.Style(colour.Unix).
 //	    Background(colour.Void).
-//	    Bold(true).
-//	    Padding(0, 1)
-//	fmt.Println(style.Render("hello"))
+//	    Padding(0, 1).
+//	    Render("hello")
 //
-//	// Palette → full style map
-//	styles := wtlip.PaletteStyles(builtin.Midnight())
-//	fmt.Println(styles["Midnight Accent"].Render("accent text"))
+//	wtlip.PaletteStyles(builtin.Midnight()) // map[name]lipgloss.Style
 package lipgloss
 
 import (
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 	tone "github.com/leraniode/wondertone/core"
 	"github.com/leraniode/wondertone/palette"
 	"github.com/leraniode/wondertone/render"
 )
 
-// profile is the detected terminal profile — set once at package init.
+func init() {
+	// Sync lipgloss's default renderer with whatever profile we detected.
+	// This ensures SetProfile() takes effect even when called before any
+	// style is created — which is the normal usage in tests and apps.
+	lipgloss.SetColorProfile(toTermenvProfile(render.Detect()))
+}
+
+// profile is our wondertone render profile — drives Color() output.
 var profile = render.Detect()
 
-// SetProfile overrides terminal profile detection.
-// Call this if you manage profile detection yourself (e.g. via charmbracelet/colorprofile).
+// toTermenvProfile maps a wondertone render.Profile to termenv.Profile.
+func toTermenvProfile(p render.Profile) termenv.Profile {
+	switch p {
+	case render.TrueColor:
+		return termenv.TrueColor
+	case render.ANSI256:
+		return termenv.ANSI256
+	case render.ANSI16:
+		return termenv.ANSI
+	default:
+		return termenv.Ascii
+	}
+}
+
+// SetProfile overrides terminal profile detection for both wondertone
+// colour conversion and lipgloss rendering.
+//
+// Call this in tests to guarantee coloured output regardless of TTY:
+//
+//	func init() { wtlip.SetProfile(render.TrueColor) }
 func SetProfile(p render.Profile) {
 	profile = p
+	// Sync lipgloss's default renderer — this is what NewStyle() uses.
+	lipgloss.SetColorProfile(toTermenvProfile(p))
 }
 
 // Color converts a wondertone Tone to a lipgloss.Color.
-// Respects the current terminal profile — TrueColor returns hex,
-// ANSI256 returns the index string, ANSI16 returns the base color index,
-// NoColor returns an empty string (lipgloss renders unstyled).
 func Color(t tone.Tone) lipgloss.Color {
 	return lipgloss.Color(render.LipglossColor(t, profile))
 }
 
 // ColorHex always returns the hex lipgloss.Color regardless of terminal profile.
-// Use this when lipgloss itself handles profile/color downsampling.
 func ColorHex(t tone.Tone) lipgloss.Color {
 	return lipgloss.Color(t.Hex())
 }
 
-// FG returns a lipgloss.Style with the tone set as foreground color.
+// FG returns a lipgloss.Style with the tone as foreground colour.
 func FG(t tone.Tone) lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(Color(t))
 }
 
-// BG returns a lipgloss.Style with the tone set as background color.
+// BG returns a lipgloss.Style with the tone as background colour.
 func BG(t tone.Tone) lipgloss.Style {
 	return lipgloss.NewStyle().Background(Color(t))
 }
 
-// StyleBuilder wraps a lipgloss.Style with wondertone-aware methods.
-// Returned by Style() — chain methods, call .Lipgloss() to get the final style.
+// StyleBuilder wraps a lipgloss.Style with wondertone-aware setters.
 type StyleBuilder struct {
 	s lipgloss.Style
 }
@@ -127,7 +143,7 @@ func (b *StyleBuilder) Width(w int) *StyleBuilder {
 	return b
 }
 
-// Render applies the style to text — shortcut so you don't need to call Lipgloss().
+// Render applies the style to text.
 func (b *StyleBuilder) Render(text string) string {
 	return b.s.Render(text)
 }
@@ -138,11 +154,10 @@ func (b *StyleBuilder) Lipgloss() lipgloss.Style {
 }
 
 // PaletteStyles returns a map of tone name → foreground lipgloss.Style
-// for every tone in the palette. Useful for building a style kit from
-// a wondertone palette.
+// for every tone in the palette.
 //
 //	styles := wtlip.PaletteStyles(builtin.Midnight())
-//	banner := styles["Midnight Accent"].Bold(true).Padding(0, 1)
+//	styles["Midnight Accent"].Bold(true).Render("accent text")
 func PaletteStyles(p *palette.Palette) map[string]lipgloss.Style {
 	out := make(map[string]lipgloss.Style, p.Len())
 	for _, t := range p.All() {
@@ -151,15 +166,10 @@ func PaletteStyles(p *palette.Palette) map[string]lipgloss.Style {
 	return out
 }
 
-// AdaptiveStyle returns different styles for light vs dark backgrounds.
-// detectBg should return the current background tone so wondertone can
-// pick the right variant.
+// AdaptiveStyle returns a foreground style chosen based on whether
+// the background tone is light or dark — so text always contrasts.
 //
-//	style := wtlip.AdaptiveStyle(
-//	    colour.Ink,       // use on light backgrounds
-//	    colour.Paper,     // use on dark backgrounds
-//	    myBgTone,
-//	)
+//	style := wtlip.AdaptiveStyle(colour.Ink, colour.Paper, bgTone)
 func AdaptiveStyle(onLight, onDark tone.Tone, bg tone.Tone) lipgloss.Style {
 	if bg.IsLight() {
 		return FG(onLight)
