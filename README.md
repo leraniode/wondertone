@@ -22,6 +22,29 @@ A perceptual color intelligence library for Go — OKLCH under the hood, a human
 [![Go Modules](https://img.shields.io/github/go-mod/go-version/leraniode/wondertone)](https://github.com/leraniode/wondertone/blob/main/go.mod)
 
 
+> [!CAUTION]
+> **Breaking changes in v0.2.0**
+>
+> Wondertone is still in Development. The API and colour output are not yet stable.
+>
+> - **Hex output shifts.** `Tone.Hex()` and all render output will produce
+>   slightly different values than v0.1.x. The WonderMath pipeline (corrected
+>   hue, perceptual chroma, energy glow) changes what every tone renders to.
+>   Update any hardcoded hex values or golden test fixtures.
+>
+> - **`Temperature()` behaviour changed.** The result is now computed from a
+>   continuous formula that factors in chroma and lightness, not just hue ranges.
+>   A near-achromatic tone that previously returned `"neutral"` may now return
+>   `"warm"` or `"cool"` depending on its hue angle.
+>
+> - **`EffectiveC()` is no longer linear.** It previously returned `C × Energy`.
+>   It now returns `C × Energy^γ` (γ≈0.7, Stevens' power law). The same
+>   Energy value produces a different chroma output.
+>
+> - **Vibrancy → chroma mapping changed.** `PerceivedChroma` now applies a
+>   power-law exponent (V^α, α=0.9) and a per-hue weight k(H). Blues get
+>   slightly more chroma at the same Vibrancy value; yellows get slightly less.
+
 
 ```go
 import tone "github.com/leraniode/wondertone/core"
@@ -212,6 +235,91 @@ fixed := fg.EnsureContrast(bg, "AA")  // adjusts lightness only
 ```
 
 ---
+
+## WonderMath — Perceptual Colour Science
+
+v0.2 introduces WonderMath: a layer of perceptual corrections and new
+dimensions built above OKLCH. Every tone now passes through this pipeline
+at render time.
+
+### Corrected Hue — blue drift fix
+
+OKLCH blues at high chroma drift toward purple. WonderMath applies a
+chroma-weighted Gaussian correction. Grey tones are never affected.
+
+```go
+// Before v0.2: vivid blue at H=250 could look slightly purple
+// After v0.2: corrected back to true blue automatically
+blue := tone.New(tone.Light(50), tone.Vibrancy(95), tone.Hue(250))
+fmt.Println(blue.Hex()) // perceptually accurate blue
+```
+
+### Perceptual Vibrancy — equal vividness across hues
+
+Yellow naturally appears more vivid than blue at the same raw chroma.
+WonderMath applies a per-hue weight `k(H)` so `Vibrancy(80)` feels
+equally vivid at every hue:
+
+```go
+yellow := tone.New(tone.Light(70), tone.Vibrancy(80), tone.Hue(60))
+blue   := tone.New(tone.Light(70), tone.Vibrancy(80), tone.Hue(240))
+// These now feel equally vivid — yellow reduced, blue boosted
+```
+
+### Energy — now perceptually linear
+
+Energy uses Stevens' power law (`E^γ`, γ=0.7).
+`Energy=0.5` now genuinely feels half as alive, not 60%.
+
+```go
+full  := colour.Bloom                  // Energy=1.0 — full aliveness
+half  := colour.Bloom.WithEnergy(0.5)  // feels half as alive
+quiet := colour.Bloom.WithEnergy(0.2)  // barely a whisper
+
+// Whole palette — quieten everything at once
+hushed := builtin.Midnight().WithEnergy(0.4)
+```
+
+### Temperature — continuous warm↔cool
+
+`Temperature()` now returns a label driven by a real formula that factors
+in hue, chroma, and lightness. `TemperatureScalar()` gives you the raw value:
+
+```go
+ember   := tone.New(tone.Light(60), tone.Vibrancy(70), tone.Hue(25))
+glacier := tone.New(tone.Light(60), tone.Vibrancy(70), tone.Hue(196))
+
+ember.Temperature()        // "warm"
+ember.TemperatureScalar()  // 0.74
+
+glacier.Temperature()        // "cool"
+glacier.TemperatureScalar()  // -0.61
+```
+
+### Mood — derived from colour math
+
+Mood is now computed from Valence and Arousal — mathematical properties
+of the tone. `DerivedMoodValue()` gives the derived mood. `Mood()` returns
+your manual override (or the derived value if none is set).
+
+```go
+vivid := tone.New(tone.Light(65), tone.Vibrancy(95), tone.Hue(40), tone.Energy(1.0))
+muted := tone.New(tone.Light(35), tone.Vibrancy(15), tone.Hue(220), tone.Energy(0.2))
+
+vivid.DerivedMoodValue() // "playful"
+vivid.ValenceValue()     // 0.79   — positive, warm
+vivid.ArousalValue()     // 0.97   — activated
+
+muted.DerivedMoodValue() // "deep"
+muted.ValenceValue()     // 0.18   — low positive
+muted.ArousalValue()     // 0.14   — calm
+
+// Manual override still works
+named := vivid.WithMood("sunrise") // custom label, math still runs
+named.Mood()             // "sunrise"
+named.DerivedMoodValue() // "playful" — math unchanged
+```
+
 
 ## Colour — Leraniode's named tones
 
@@ -449,18 +557,19 @@ fmt.Println(t.Hex())
 
 ```
 wondertone/
-├── adapters/            Lipgloss and go-colourful adapters (seperate module with dependencies)
-│   ├── lipgloss/        Lipgloss adapter
-│   └── colourful/       go-colourful adapter
-├── example/main.go      Example code demonstrating usage
-├── core/                Tone type, OKLCH pipeline, gamut, mix, scale
-├── palette/             Palette, harmony, contrast
-│   └── builtin/         Midnight, Aurora, Ember, Glacier, Rosewood
-├── colour/              Leraniode named tones (one file per tone)
-├── render/              Terminal output, profile detection, lipgloss adapter
-├── wtone/               .wtone file load/save
+├── adapters/          Lipgloss and go-colourful adapters (seperate module with dependencies)
+│   ├── lipgloss/      Lipgloss adapter
+│   └── colourful/     go-colourful adapter
+├── example/main.go    Example code demonstrating usage
+├── core/              Tone type, OKLCH pipeline, WonderMath, gamut, mix, scale
+│   └── wondermath.go  WonderSpace: corrected hue, perceived chroma, energy, mood
+├── palette/           Palette, harmony, contrast
+│   └── builtin/       Midnight, Aurora, Ember, Glacier, Rosewood
+├── colour/            Leraniode named tones (one file per tone)
+├── render/            Terminal output, profile detection, lipgloss adapter
+├── wtone/             .wtone file load/save
 └── internal/
-    └── testutil/        Zero-dependency test helpers
+    └── testutil/      Zero-dependency test helpers
 ```
 
 **Dependencies:** `github.com/BurntSushi/toml` (wtone only). The `core/`, `palette/`, `colour/`, and `render/` packages have **zero external dependencies**.
@@ -470,12 +579,14 @@ wondertone/
 ## Design principles
 
 1. **OKLCH-first internally** — RGB is strictly output/terminal only
-2. **Gamut safety mandatory** — iterative chroma reduction, hue never drifts
-3. **Human vocabulary** — Light, Vibrancy, Hue, Energy — not L, C, H
-4. **Immutable by default** — every method returns a new Tone
-5. **Energy is expressive** — same palette, different aliveness
-6. **One file per tone** — the `colour/` package is a browseable gallery
-7. **.wtone is the primary tool** — wondertone speaks in this format, you can use it to create tones, palettes, styles in wondertone
+2. **WonderMath above OKLCH** — perceptual corrections as a clean layer, not patches
+3. **Gamut safety mandatory** — iterative chroma reduction, hue never drifts
+4. **Human vocabulary** — Light, Vibrancy, Hue, Energy, Temperature, Mood
+5. **Immutable by default** — every method returns a new Tone
+6. **Energy is expressive** — same palette, different aliveness
+7. **Mood is mathematical** — derived from Valence + Arousal, not just a tag
+8. **One file per tone** — the `colour/` package is a browseable gallery
+9. **.wtone is the primary tool** — wondertone speaks in this format, you can use it to create tones, palettes, styles in wondertone
 
 ---
 

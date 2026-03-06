@@ -32,17 +32,17 @@ func main() {
 		tone.Moody("vibrant"),
 	)
 
-	fmt.Printf("%-20s  hex=%-9s  Light=%.0f  Vibrancy=%.0f  Hue=%.0f  Energy=%.1f  Mood=%s\n",
-		spark.Name(), spark.Hex(), spark.Light(), spark.Vibrancy(), spark.Hue(), spark.Energy(), spark.Mood())
+	fmt.Printf("%-20s  %-12s  hex=%-9s  Light=%.0f  Vibrancy=%.0f  Hue=%.0f  Energy=%.1f  Mood=%s\n",
+		spark.Name(), render.Swatch(spark, profile, 2), spark.Hex(), spark.Light(), spark.Vibrancy(), spark.Hue(), spark.Energy(), spark.Mood())
 
 	// Power user: raw OKLCH
 	raw := tone.FromOKLCH(0.68, 0.18, 142)
-	fmt.Printf("%-20s  hex=%-9s  (from raw OKLCH)\n", "raw OKLCH", raw.Hex())
+	fmt.Printf("%-20s  %-12s  hex=%-9s  (from raw OKLCH)\n", "raw OKLCH", render.Swatch(raw, profile, 2), raw.Hex())
 
 	// From hex
 	legacy, _ := tone.FromHex("#e94560")
-	fmt.Printf("%-20s  hex=%-9s  Light=%.0f  Vibrancy=%.0f\n",
-		"from #e94560", legacy.Hex(), legacy.Light(), legacy.Vibrancy())
+	fmt.Printf("%-20s  %-12s  hex=%-9s  Light=%.0f  Vibrancy=%.0f\n",
+		"from #e94560", render.Swatch(legacy, profile, 2), legacy.Hex(), legacy.Light(), legacy.Vibrancy())
 
 	fmt.Println()
 
@@ -76,7 +76,7 @@ func main() {
 	for _, step := range grad {
 		fmt.Print(render.Swatch(step, profile, 1) + " ")
 	}
-	fmt.Println("\n")
+	fmt.Print("\n")
 
 	// ── 5. Harmony ───────────────────────────────────────────────────────────
 	fmt.Println("── 5. Harmony (triadic from Crimson) ────────────────────")
@@ -106,11 +106,17 @@ func main() {
 		Add(colour.Starlight).
 		Add(colour.Bloom).
 		Add(colour.Ember).
+		Add(colour.Crimson).
+		Add(colour.Dawn).
 		Build()
 
 	report := custom.Validate()
-	fmt.Printf("  Palette: %s (%d tones)\n", custom.Name(), custom.Len())
-	fmt.Printf("  Validation: %s", report.String())
+	fmt.Printf("  Palette: %s (%d tones) ", custom.Name(), custom.Len())
+	for _, t := range custom.All() {
+		fmt.Print(render.Swatch(t, profile, 1) + " ")
+	}
+	fmt.Println()
+	fmt.Printf("  Validation: %s\n", report.String())
 	fmt.Println()
 
 	// ── 8. Accessibility ────────────────────────────────────────────────────
@@ -146,4 +152,65 @@ func main() {
 	fmt.Println("── 10. .wtone file ──────────────────────────────────────")
 	wtone.SaveWTone("assets/tone.wtone", custom)
 	fmt.Println("file created: ./assets/tone.wtone")
+
+	// ── 11. WonderMath — Temperature ─────────────────────────────────────────
+	fmt.Println("── 11. WonderMath — Temperature ─────────────────────────")
+	temperatures := []tone.Tone{
+		tone.New(tone.Light(60), tone.Vibrancy(70), tone.Hue(25),  tone.Named("Ember")),
+		tone.New(tone.Light(60), tone.Vibrancy(70), tone.Hue(60),  tone.Named("Gold")),
+		tone.New(tone.Light(60), tone.Vibrancy(70), tone.Hue(142), tone.Named("Unix")),
+		tone.New(tone.Light(60), tone.Vibrancy(70), tone.Hue(196), tone.Named("Glacier")),
+		tone.New(tone.Light(60), tone.Vibrancy(70), tone.Hue(240), tone.Named("Starlight")),
+	}
+	for _, t := range temperatures {
+		fmt.Printf("  %-12s  %-10s  hex=%-9s  temp=%-8s  scalar=%+.2f\n",
+			t.Name(), render.Swatch(t, profile, 2), t.Hex(), t.Temperature(), t.TemperatureScalar())
+	}
+	fmt.Println()
+
+	// ── 12. WonderMath — Mood as math ────────────────────────────────────────
+	fmt.Println("── 12. WonderMath — Derived Mood ────────────────────────")
+	moodTones := []tone.Tone{
+		tone.New(tone.Light(75), tone.Vibrancy(95), tone.Hue(40),  tone.Energy(1.0), tone.Named("Sunrise")),
+		tone.New(tone.Light(30), tone.Vibrancy(40), tone.Hue(250), tone.Energy(0.3), tone.Named("Midnight")),
+		tone.New(tone.Light(85), tone.Vibrancy(20), tone.Hue(50),  tone.Energy(0.6), tone.Named("Linen")),
+		tone.New(tone.Light(55), tone.Vibrancy(85), tone.Hue(320), tone.Energy(0.9), tone.Named("Bloom")),
+		tone.New(tone.Light(50), tone.Vibrancy(65), tone.Hue(270), tone.Energy(0.5), tone.Named("Dusk")),
+	}
+	for _, t := range moodTones {
+		fmt.Printf("  %-12s %-10s  hex=%-9s  mood=%-10s  valence=%+.2f  arousal=%+.2f\n",
+			t.Name(), render.Swatch(t, profile, 3), t.Hex(), t.DerivedMoodValue(), t.ValenceValue(), t.ArousalValue())
+	}
+	fmt.Println()
+
+	// ── 13. WonderMath — Energy Stevens law ──────────────────────────────────
+	fmt.Println("── 13. WonderMath — Energy (Stevens' power law) ─────────")
+	base := colour.Bloom
+	fmt.Printf("  base            hex=%s  effectiveC=%.4f\n", base.Hex(), base.EffectiveC())
+	for _, e := range []float64{0.8, 0.6, 0.4, 0.2, 0.0} {
+		t := base.WithEnergy(e)
+		linearC := base.EffectiveC() * e
+		fmt.Printf("  energy=%.1f  %s  hex=%s  effectiveC=%.4f  (linear would be %.4f)\n",
+			e, render.Swatch(t, profile, 3), t.Hex(), t.EffectiveC(), linearC)
+	}
+	fmt.Println()
+
+	// ── 14. WonderMath — Perceptual vibrancy equality ────────────────────────
+	fmt.Println("── 14. WonderMath — Perceptual Vibrancy Equality ────────")
+	hues := []struct{ name string; hue float64 }{
+		{"Red",     0},
+		{"Orange",  30},
+		{"Yellow",  60},
+		{"Green",   142},
+		{"Cyan",    180},
+		{"Blue",    240},
+		{"Magenta", 300},
+	}
+	for _, h := range hues {
+		t := tone.New(tone.Light(65), tone.Vibrancy(80), tone.Hue(h.hue))
+		fmt.Printf("  %-8s  H=%3.0f  %s  hex=%s\n",
+			h.name, h.hue, render.Swatch(t, profile, 3), t.Hex())
+	}
+	fmt.Println("  Each swatch is Vibrancy=80 — perceptually equalised across hues")
+	fmt.Println()
 }
