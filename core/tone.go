@@ -139,11 +139,9 @@ func New(opts ...Option) Tone {
 	for _, o := range opts {
 		o(&t)
 	}
-	// Compute raw OKLCH chroma from vibrancy percentage.
-	// maxChroma gives the gamut ceiling at this L and H.
-	// vibrancy is what fraction of that ceiling to use.
-	maxC := maxChromaForLH(t.l, t.hue)
-	t.c = maxC * (t.vibrancy / 100.0)
+	// Compute OKLCH chroma via WonderMath PerceivedChroma:
+	// applies gamut ceiling, power-law V^α shaping, and k(H) hue weight.
+	t.c = PerceivedChroma(t.vibrancy, t.l, t.hue)
 	return t
 }
 
@@ -274,9 +272,11 @@ func (t Tone) String() string { return t.Hex() }
 // --- Effective chroma (energy-aware) ---
 
 // EffectiveC returns the chroma that will actually be used for rendering.
-// This is C × Energy — the stored C is the truth, Energy is the expression.
+// Uses the WonderMath Stevens' power law: C * E^γ (γ≈0.7).
+// Energy=0.5 now feels half as alive, not 60% as alive.
+// The stored C and Energy are never modified.
 func (t Tone) EffectiveC() float64 {
-	return t.c * t.energy
+	return EffectiveChroma(t.c, t.energy)
 }
 
 // --- Manipulation (all immutable — returns new Tone) ---
@@ -372,22 +372,46 @@ func (t Tone) IsLight() bool { return t.light > 50 }
 // IsDark reports whether the Tone is perceptually dark (Light <= 50).
 func (t Tone) IsDark() bool { return t.light <= 50 }
 
-// Temperature returns "warm", "cool", or "neutral" based on hue.
+// Temperature returns "warm", "cool", or "neutral".
+// Upgraded in v0.2: uses WonderMath continuous formula instead of hue-range
+// lookup — chroma and lightness now modulate the reading.
 func (t Tone) Temperature() string {
-	if t.vibrancy < 5 {
-		return "neutral" // achromatic
-	}
-	h := t.hue
-	switch {
-	case (h >= 0 && h < 60) || h >= 300:
-		return "warm" // reds, oranges, magentas
-	case h >= 60 && h < 150:
-		return "warm" // yellows, yellow-greens
-	case h >= 150 && h < 270:
-		return "cool" // greens, cyans, blues
-	default:
-		return "neutral"
-	}
+	tv := TemperatureValue(t.hue, t.c, t.l)
+	return TemperatureLabel(tv)
+}
+
+// TemperatureScalar returns the continuous warm↔cool value T ∈ [-1, +1].
+// +1 = maximally warm, -1 = maximally cool, 0 = neutral.
+// More precise than Temperature() which returns a label.
+func (t Tone) TemperatureScalar() float64 {
+	return TemperatureValue(t.hue, t.c, t.l)
+}
+
+// DerivedMoodValue returns the mathematically derived mood string.
+// Computed from valence and arousal — independent of the stored Mood() tag.
+// Use Mood() for the display label (manual override takes precedence).
+func (t Tone) DerivedMoodValue() string {
+	s := normalizedSaturation(t.c, t.l, t.hue)
+	tv := TemperatureValue(t.hue, t.c, t.l)
+	val := Valence(tv, t.l, s)
+	aro := Arousal(s, t.energy, tv)
+	return DerivedMood(val, aro, tv)
+}
+
+// Valence returns the emotional valence of this tone ∈ [-1, +1].
+// +1 = positive (bright, warm, vivid). -1 = negative (dark, cool, muted).
+func (t Tone) ValenceValue() float64 {
+	s := normalizedSaturation(t.c, t.l, t.hue)
+	tv := TemperatureValue(t.hue, t.c, t.l)
+	return Valence(tv, t.l, s)
+}
+
+// ArousalValue returns the emotional arousal of this tone ∈ [-1, +1].
+// +1 = activated (vivid, energetic). -1 = calm (muted, quiet).
+func (t Tone) ArousalValue() float64 {
+	s := normalizedSaturation(t.c, t.l, t.hue)
+	tv := TemperatureValue(t.hue, t.c, t.l)
+	return Arousal(s, t.energy, tv)
 }
 
 // --- Accessibility ---
@@ -481,10 +505,15 @@ func (t Tone) Equal(other Tone) bool {
 // --- Internal ---
 
 // toSRGB converts to gamma-encoded sRGB [0–1], gamut-safe.
+// Full WonderMath pipeline applied at render time:
+//  1. CorrectedHue       — fix blue-purple drift
+//  2. EffectiveChroma    — Stevens' power law energy scaling
+//  3. EffectiveLightness — subtle glow at high energy
 func (t Tone) toSRGB() (r, g, b float64) {
-	// Use effective chroma (energy-scaled) for rendering.
-	effectiveC := t.EffectiveC()
-	l, c, h := toGamutSafe(t.l, effectiveC, t.hue)
+	h := CorrectedHue(t.hue, t.c, t.l)
+	c := EffectiveChroma(t.c, t.energy)
+	l := EffectiveLightness(t.l, t.energy)
+	l, c, h = toGamutSafe(l, c, h)
 	lr, lg, lb := oklchToLinearRGB(l, c, h)
 	return linearToSRGB(lr), linearToSRGB(lg), linearToSRGB(lb)
 }

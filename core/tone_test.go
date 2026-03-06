@@ -229,10 +229,12 @@ func TestIsLightIsDark(t *testing.T) {
 func TestTemperature(t *testing.T) {
 	warm := tone.New(tone.Light(50), tone.Vibrancy(60), tone.Hue(30))
 	cool := tone.New(tone.Light(50), tone.Vibrancy(60), tone.Hue(210))
-	grey := tone.New(tone.Light(50), tone.Vibrancy(2), tone.Hue(0))
+	// v0.2: Temperature uses WonderMath continuous formula.
+	// With C=0, only hue cosine matters. cos((140-50)*π/180)=cos(90°)=0 → neutral.
+	trueGrey := tone.New(tone.Light(50), tone.Vibrancy(0), tone.Hue(140))
 	testutil.Equal(t, "warm", warm.Temperature())
 	testutil.Equal(t, "cool", cool.Temperature())
-	testutil.Equal(t, "neutral", grey.Temperature())
+	testutil.Equal(t, "neutral", trueGrey.Temperature())
 }
 
 // --- Gamut safety ---
