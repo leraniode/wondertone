@@ -2,7 +2,7 @@
 //
 // Run with:
 //
-//	cd example && go run main.go
+//	go run examples/output/main.go
 package main
 
 import (
@@ -99,7 +99,7 @@ func main() {
 
 	// ── 7. Build your own palette ────────────────────────────────────────────
 	fmt.Println("── 7. Build a custom palette ────────────────────────────")
-	custom, _ := palette.New("My Palette").
+	custom, _ := palette.New("WonderPalette").
 		Description("A custom palette built with wondertone").
 		Mood("vibrant").
 		Add(colour.Unix).
