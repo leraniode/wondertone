@@ -2,14 +2,13 @@ package colour
 
 import tone "github.com/leraniode/wondertone/core"
 
-// Dawn is Leraniode's soft pink-orange — the exact color of the sky five
-// minutes before the sun arrives. Hopeful. The day hasn't decided what it
-// will be yet.
+// Dawn is the luminous warm peach-gold of first light — the sky just
+// before the sun clears the horizon. Warm, soft, full of promise.
 var Dawn = tone.New(
-	tone.Light(78),
-	tone.Vibrancy(55),
-	tone.Hue(18),
-	tone.Energy(0.78),
+	tone.Light(83),
+	tone.Vibrancy(70),
+	tone.Hue(26),
+	tone.Energy(0.82),
 	tone.Named("Dawn"),
 	tone.Moody("playful"),
 )

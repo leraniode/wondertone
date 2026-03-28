@@ -2,13 +2,13 @@ package colour
 
 import tone "github.com/leraniode/wondertone/core"
 
-// Slate is Leraniode's neutral mid-tone — the color of good documentation,
-// quiet comments, and things that don't need to shout.
+// Slate is cool blue-grey stone — calm and grounded, with enough colour
+// identity to feel distinctly cooler than a neutral grey.
 var Slate = tone.New(
-	tone.Light(55),
-	tone.Vibrancy(14),
-	tone.Hue(225),
-	tone.Energy(0.70),
+	tone.Light(57),
+	tone.Vibrancy(40),
+	tone.Hue(218),
+	tone.Energy(0.75),
 	tone.Named("Slate"),
 	tone.Moody("calm"),
 )

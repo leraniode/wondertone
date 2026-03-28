@@ -1,8 +1,13 @@
 package wtone_test
 
+// wtone_test.go covers palette .wtone file features:
+// vocabulary forms in [[colors]], mixed definition forms, mood
+// inheritance, and serialisation with vocabulary fields.
+//
+// Standalone tone file tests, LoadAny, and Validate are in tone_test.go.
+
 import (
-	"os"
-	"path/filepath"
+	"strings"
 	"testing"
 
 	tone "github.com/leraniode/wondertone/core"
@@ -11,154 +16,168 @@ import (
 	"github.com/leraniode/wondertone/wtone"
 )
 
-func buildTestPalette() *palette.Palette {
-	unix := tone.New(
-		tone.Light(68), tone.Vibrancy(72), tone.Hue(142),
-		tone.Energy(0.95), tone.Named("Unix"), tone.Moody("focused"),
-	)
-	ember := tone.New(
-		tone.Light(72), tone.Vibrancy(85), tone.Hue(38),
-		tone.Energy(0.9), tone.Named("Ember"), tone.Moody("warm"),
-	)
-	glacier := tone.New(
-		tone.Light(74), tone.Vibrancy(58), tone.Hue(196),
-		tone.Energy(0.82), tone.Named("Glacier"),
-	)
-	return palette.New("Leraniode").
-		Description("Leraniode brand tones").
-		Mood("focused").
-		Author("leraniode").
-		Version("1.0.0").
-		Add(unix).Add(ember).Add(glacier).
-		MustBuild()
+// --- Palette parsing ---
+
+func TestParseWToneWondertoneVocabulary(t *testing.T) {
+	src := []byte(`
+type        = "palette"
+name        = "Forest"
+description = "deep forest tones"
+mood        = "calm"
+author      = "leraniode"
+
+[[colors]]
+name     = "Moss"
+light    = 42
+vibrancy = 55
+hue      = 138
+energy   = 0.8
+
+[[colors]]
+name     = "Bark"
+light    = 28
+vibrancy = 20
+hue      = 32
+`)
+	p, err := wtone.ParseWTone(src)
+	testutil.NoError(t, err)
+	testutil.Equal(t, "Forest", p.Name())
+	testutil.Equal(t, 2, p.Len())
+
+	moss, ok := p.Get("Moss")
+	testutil.True(t, ok, "Moss should exist")
+	testutil.InDelta(t, 42.0, moss.Light(), 0.2)
+	testutil.InDelta(t, 0.8, moss.Energy(), 1e-3)
 }
 
-func TestMarshalRoundtrip(t *testing.T) {
-	original := buildTestPalette()
+func TestParseWToneMixedForms(t *testing.T) {
+	src := []byte(`
+type = "palette"
+name = "Mixed"
 
-	data, err := wtone.MarshalWTone(original)
+[[colors]]
+name     = "ByVocab"
+light    = 65
+vibrancy = 80
+hue      = 30
+
+[[colors]]
+name  = "ByOKLCH"
+oklch = "0.55 0.18 200"
+
+[[colors]]
+name = "ByHex"
+hex  = "#4ecb71"
+
+[[colors]]
+name = "ByRaw"
+l    = 0.60
+c    = 0.14
+h    = 142.0
+`)
+	p, err := wtone.ParseWTone(src)
 	testutil.NoError(t, err)
-	testutil.True(t, len(data) > 0, "marshalled data should not be empty")
+	testutil.Equal(t, 4, p.Len())
 
-	loaded, err := wtone.ParseWTone(data)
-	testutil.NoError(t, err)
-
-	testutil.Equal(t, original.Name(), loaded.Name())
-	testutil.Equal(t, original.Description(), loaded.Description())
-	testutil.Equal(t, original.Author(), loaded.Author())
-	testutil.Equal(t, original.Len(), loaded.Len())
-}
-
-func TestRoundtripPreservesValues(t *testing.T) {
-	original := buildTestPalette()
-	data, _ := wtone.MarshalWTone(original)
-	loaded, err := wtone.ParseWTone(data)
-	testutil.NoError(t, err)
-
-	for _, orig := range original.All() {
-		loaded_t, ok := loaded.Get(orig.Name())
-		testutil.True(t, ok, "tone %q should exist after roundtrip", orig.Name())
-
-		ol, oc, oh := orig.OKLCH()
-		ll, lc, lh := loaded_t.OKLCH()
-
-		testutil.InDelta(t, ol, ll, 1e-4, "L should roundtrip for %s", orig.Name())
-		testutil.InDelta(t, oc, lc, 1e-4, "C should roundtrip for %s", orig.Name())
-		testutil.InDelta(t, oh, lh, 1e-3, "H should roundtrip for %s", orig.Name())
-		testutil.InDelta(t, orig.Energy(), loaded_t.Energy(), 1e-3, "Energy should roundtrip for %s", orig.Name())
+	for _, name := range []string{"ByVocab", "ByOKLCH", "ByHex", "ByRaw"} {
+		_, ok := p.Get(name)
+		testutil.True(t, ok, "%s should parse", name)
 	}
 }
 
-func TestSaveAndLoad(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "test.wtone")
-
-	original := buildTestPalette()
-	err := wtone.SaveWTone(path, original)
+func TestParseWToneNoTypeDefaultsToPalette(t *testing.T) {
+	// Backwards compat — files without type field parse as palettes
+	src := []byte(`
+name = "Legacy"
+[[colors]]
+name  = "Old"
+oklch = "0.65 0.18 142"
+`)
+	p, err := wtone.ParseWTone(src)
 	testutil.NoError(t, err)
-
-	// File should exist
-	_, statErr := os.Stat(path)
-	testutil.NoError(t, statErr)
-
-	loaded, err := wtone.LoadWTone(path)
-	testutil.NoError(t, err)
-	testutil.Equal(t, original.Name(), loaded.Name())
-	testutil.Equal(t, original.Len(), loaded.Len())
+	testutil.Equal(t, "Legacy", p.Name())
 }
 
-func TestLoadMissingFile(t *testing.T) {
-	_, err := wtone.LoadWTone("/nonexistent/path/palette.wtone")
+func TestParseWToneRejectsToneType(t *testing.T) {
+	src := []byte(`
+type  = "tone"
+name  = "Wrongly sent to ParseWTone"
+light = 50
+`)
+	_, err := wtone.ParseWTone(src)
 	testutil.Error(t, err)
 }
 
-func TestParseOKLCHShorthand(t *testing.T) {
-	// Shorthand via ParseWTone
-	content := []byte(`
-name = "shorthand"
-[[colors]]
-name  = "Test"
-oklch = "0.68 0.18 142"
-energy = 0.9
-`)
-	p, err := wtone.ParseWTone(content)
-	testutil.NoError(t, err)
-
-	t2, ok := p.Get("Test")
-	testutil.True(t, ok)
-	l, c, h := t2.OKLCH()
-	testutil.InDelta(t, 0.68, l, 1e-4)
-	testutil.InDelta(t, 0.18, c, 1e-4)
-	testutil.InDelta(t, 142.0, h, 1e-3)
-}
-
-func TestParseMoodInheritance(t *testing.T) {
-	content := []byte(`
-name = "inherit"
+func TestParseWToneMoodInheritance(t *testing.T) {
+	src := []byte(`
+type = "palette"
+name = "Moody"
 mood = "serene"
+
 [[colors]]
-name = "One"
-l = 0.5
-c = 0.1
-h = 200.0
+name     = "Inherits"
+light    = 70
+vibrancy = 30
+hue      = 200
+
 [[colors]]
-name = "Two"
-l = 0.6
-c = 0.12
-h = 210.0
-mood = "focused"
+name     = "Overrides"
+light    = 50
+vibrancy = 80
+hue      = 10
+mood     = "urgent"
 `)
-	p, err := wtone.ParseWTone(content)
+	p, err := wtone.ParseWTone(src)
 	testutil.NoError(t, err)
 
-	one, _ := p.Get("One")
-	two, _ := p.Get("Two")
-
-	testutil.Equal(t, "serene", one.Mood(), "One should inherit palette mood")
-	testutil.Equal(t, "focused", two.Mood(), "Two should keep its own mood")
+	inherits, _ := p.Get("Inherits")
+	overrides, _ := p.Get("Overrides")
+	testutil.Equal(t, "serene", inherits.Mood())
+	testutil.Equal(t, "urgent", overrides.Mood())
 }
 
-func TestParseValidationErrors(t *testing.T) {
-	// Missing name
-	_, err := wtone.ParseWTone([]byte(`
-[[colors]]
-l = 0.5
-c = 0.1
-h = 30.0
-`))
-	testutil.Error(t, err)
+// --- Palette serialisation ---
 
-	// No colors
-	_, err = wtone.ParseWTone([]byte(`name = "empty"`))
-	testutil.Error(t, err)
+func TestMarshalWToneUsesVocabularyFields(t *testing.T) {
+	p, _ := palette.New("Test").
+		Add(tone.New(tone.Light(60), tone.Vibrancy(75), tone.Hue(142), tone.Named("Leaf"))).
+		Build()
 
-	// Color missing name
-	_, err = wtone.ParseWTone([]byte(`
-name = "test"
-[[colors]]
-l = 0.5
-c = 0.1
-h = 30.0
-`))
-	testutil.Error(t, err)
+	data, err := wtone.MarshalWTone(p)
+	testutil.NoError(t, err)
+
+	s := string(data)
+	testutil.True(t, strings.Contains(s, "light"), "should use light field")
+	testutil.True(t, strings.Contains(s, "vibrancy"), "should use vibrancy field")
+	testutil.True(t, strings.Contains(s, "hue"), "should use hue field")
+	testutil.True(t, strings.Contains(s, `type = "palette"`), "should have type field")
+	// Should NOT contain raw l/c/h (those are for power users; serialiser uses vocab)
+	testutil.True(t, !strings.Contains(s, "\nl = "), "should not use raw l field")
+}
+
+func TestMarshalWToneRoundTrip(t *testing.T) {
+	original, _ := palette.New("Leraniode").
+		Mood("focused").
+		Author("leraniode").
+		Description("the original tones").
+		Add(tone.New(tone.Light(68), tone.Vibrancy(72), tone.Hue(142), tone.Named("Unix"), tone.Moody("focused"))).
+		Add(tone.New(tone.Light(45), tone.Vibrancy(60), tone.Hue(285), tone.Named("Starlight"), tone.Moody("mystical"))).
+		Build()
+
+	data, err := wtone.MarshalWTone(original)
+	testutil.NoError(t, err)
+
+	recovered, err := wtone.ParseWTone(data)
+	testutil.NoError(t, err)
+	testutil.Equal(t, "Leraniode", recovered.Name())
+	testutil.Equal(t, "leraniode", recovered.Author())
+	testutil.Equal(t, 2, recovered.Len())
+
+	unix, ok := recovered.Get("Unix")
+	testutil.True(t, ok)
+	testutil.Equal(t, "focused", unix.Mood())
+	// Values should survive round-trip within rounding tolerance
+	testutil.InDelta(t, 68.0, unix.Light(), 0.2)
+	testutil.InDelta(t, 72.0, unix.Vibrancy(), 0.2)
+	testutil.InDelta(t, 142.0, unix.Hue(), 0.2)
 }

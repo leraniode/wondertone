@@ -47,7 +47,7 @@ func main() {
 	fmt.Println()
 
 	// ── 2. Leraniode named tones ─────────────────────────────────────────────
-	fmt.Println("── 2. Leraniode colour collection ──────────────────────")
+	fmt.Println("── 2. Wondertone colour collection ──────────────────────")
 	for _, t := range colour.All() {
 		swatch := render.Swatch(t, profile, 2)
 		fmt.Printf("%s  %-12s  %-9s  mood=%-10s  temp=%s\n",
@@ -56,8 +56,8 @@ func main() {
 	fmt.Println()
 
 	// ── 3. Tone Scale ────────────────────────────────────────────────────────
-	fmt.Println("── 3. Tone scale (Unix green) ───────────────────────────")
-	scale := colour.Unix.Scale()
+	fmt.Println("── 3. Tone scale (Crimson) ───────────────────────────")
+	scale := colour.Crimson.Scale()
 	roles := []string{"Background", "SubtleBackground", "ElementBackground", "HoveredBackground",
 		"ActiveBackground", "SubtleBorder", "Border", "StrongBorder",
 		"Solid", "HoveredSolid", "Text", "HighContrastText"}
@@ -101,6 +101,7 @@ func main() {
 	fmt.Println("── 7. Build a custom palette ────────────────────────────")
 	custom, _ := palette.New("WonderPalette").
 		Description("A custom palette built with wondertone").
+		Author("DominionDev").
 		Mood("vibrant").
 		Add(colour.Unix).
 		Add(colour.Starlight).
