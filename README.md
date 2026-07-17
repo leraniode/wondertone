@@ -1,16 +1,12 @@
 <p align="left">
     <a href="https://github.com/leraniode/wondertone">
-        <img src="https://raw.githubusercontent.com/leraniode/.github/main/assets/images/wondertonebrandimage.svg" width="1024" />
+        <img src="https://raw.githubusercontent.com/leraniode/.github/main/assets/images/wondertone.svg" width="1024" />
     </a>
 </p>
 
 # ✨ wondertone 🌈🎨
 
 A perceptual color intelligence library for Go — OKLCH under the hood, a human vocabulary on the surface.
-
-> [!NOTE]
-> Wondertone is still in early development, colours may look not beautiful and stylish yet, but I am making researches on colour math and systems.
-> Feel free to open issues and discussions. Feedback and contributions welcome!
 
 [![CI](https://github.com/leraniode/wondertone/actions/workflows/ci.yml/badge.svg)](https://github.com/leraniode/wondertone/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/leraniode/wondertone.svg)](https://pkg.go.dev/github.com/leraniode/wondertone)
@@ -21,7 +17,6 @@ A perceptual color intelligence library for Go — OKLCH under the hood, a human
 [![go-colourful adapter version](https://pkg.go.dev/github.com/leraniode/wondertone/adapters/colorful?tab=versions&color=blue)](https://pkg.go.dev/github.com/leraniode/wondertone/adapters/colorful)
 [![Go Modules](https://img.shields.io/github/go-mod/go-version/leraniode/wondertone)](https://github.com/leraniode/wondertone/blob/main/go.mod)
 
-
 > [!CAUTION]
 > **Breaking changes in v0.2.0**
 >
@@ -31,20 +26,16 @@ A perceptual color intelligence library for Go — OKLCH under the hood, a human
 >   slightly different values than v0.1.x. The WonderMath pipeline (corrected
 >   hue, perceptual chroma, energy glow) changes what every tone renders to.
 >   Update any hardcoded hex values or golden test fixtures.
->
 > - **`Temperature()` behaviour changed.** The result is now computed from a
 >   continuous formula that factors in chroma and lightness, not just hue ranges.
 >   A near-achromatic tone that previously returned `"neutral"` may now return
 >   `"warm"` or `"cool"` depending on its hue angle.
->
 > - **`EffectiveC()` is no longer linear.** It previously returned `C × Energy`.
 >   It now returns `C × Energy^γ` (γ≈0.7, Stevens' power law). The same
 >   Energy value produces a different chroma output.
->
 > - **Vibrancy → chroma mapping changed.** `PerceivedChroma` now applies a
 >   power-law exponent (V^α, α=0.9) and a per-hue weight k(H). Blues get
 >   slightly more chroma at the same Vibrancy value; yellows get slightly less.
-
 
 ```go
 import tone "github.com/leraniode/wondertone/core"
@@ -67,12 +58,12 @@ fmt.Println(spark.Hex()) // #f5a04a (gamut-safe, always)
 
 Wondertone speaks a new vocabulary. Instead of OKLCH's `L`, `C`, `H` — which require color-science knowledge — wondertone gives you:
 
-| Term | Range | Meaning |
-|---|---|---|
-| **Light** | 0–100 | Perceptual lightness. 0=black, 100=white. |
+| Term         | Range | Meaning                                                          |
+| ------------ | ----- | ---------------------------------------------------------------- |
+| **Light**    | 0–100 | Perceptual lightness. 0=black, 100=white.                        |
 | **Vibrancy** | 0–100 | Colorfulness as % of gamut max. 0=grey, 100=most vivid possible. |
-| **Hue** | 0–360 | Color angle. 0=red, 120=green, 240=blue. |
-| **Energy** | 0–1 | Aliveness multiplier. 1=full, 0=muted. |
+| **Hue**      | 0–360 | Color angle. 0=red, 120=green, 240=blue.                         |
+| **Energy**   | 0–1   | Aliveness multiplier. 1=full, 0=muted.                           |
 
 Under the hood: OKLCH, OKLab mixing, binary-search gamut safety, perceptual tone scales. You never have to know any of that.
 
@@ -320,7 +311,6 @@ named.Mood()             // "sunrise"
 named.DerivedMoodValue() // "playful" — math unchanged
 ```
 
-
 ## Colour — Leraniode's named tones
 
 ```go
@@ -341,6 +331,10 @@ colour.Paper     // warm off-white, easy
 
 colour.All()     // []Tone — all 12
 ```
+
+> [!IMPORTANT]
+> The colour package will be removed and will be used
+> for an entirely different purpose on the next release
 
 ---
 
@@ -395,9 +389,7 @@ matrix      := palette.ContrastMatrix(p)          // every pair
 pairs        := palette.FindReadablePairs(p, "AA") // passing pairs only
 ```
 
----
-
-## Built-in palettes
+### Built-in palettes
 
 ```go
 import "github.com/leraniode/wondertone/palette/builtin"
@@ -411,6 +403,10 @@ builtin.Rosewood()  // rich rose dark
 builtin.All()       // []*Palette — all five
 builtin.Names()     // []string
 ```
+
+> [!IMPORTANT]
+> The palette/builtin package will be removed entirely
+> with no ready-made palette available on the next release
 
 ---
 
@@ -437,7 +433,7 @@ Downsampling for ANSI256/ANSI16 uses **OKLab ΔE** nearest-neighbor — perceptu
 
 ## .wtone files
 
-The `.wtone` format is wondertone's native, human-editable palette file. Designers can edit them without touching Go code.
+The `.wtone` format is wondertone's native, toml-based palette file.
 
 ```toml
 name        = "Leraniode Starlight"
@@ -483,6 +479,7 @@ data, err := wtone.MarshalWTone(p)
 ## Adapters
 
 Wondertone has Adapters for two libraries:
+
 - [Lipgloss](https://github.com/charmbracelet/lipgloss)
 - [go-colourful](https://github.com/lucasb-eyer/go-colourful)
 
@@ -491,6 +488,7 @@ The adapters convert between wondertone's OKLCH and the target library's color m
 They are located in the `adapters/` package, as a seperate module
 
 ### Installing the adapters
+
 #### Lipgloss adapter
 
 ```bash
@@ -506,6 +504,7 @@ go get github.com/leraniode/wondertone/adapters/colourful
 Each adapter has its respective dependency and `wondertone` as a dependency.
 
 ### Usage
+
 #### Lipgloss adapter
 
 Import the adapter as wtlip to avoid conflict with lipgloss package API:
@@ -550,53 +549,14 @@ t := wcolorful.FromColorful(cf)
 fmt.Println(t.Hex())
 ```
 
-
----
-
-## Package layout
-
-```
-wondertone/
-├── adapters/          Lipgloss and go-colourful adapters (seperate module with dependencies)
-│   ├── lipgloss/      Lipgloss adapter
-│   └── colourful/     go-colourful adapter
-├── example/main.go    Example code demonstrating usage
-├── core/              Tone type, OKLCH pipeline, WonderMath, gamut, mix, scale
-│   └── wondermath.go  WonderSpace: corrected hue, perceived chroma, energy, mood
-├── palette/           Palette, harmony, contrast
-│   └── builtin/       Midnight, Aurora, Ember, Glacier, Rosewood
-├── colour/            Leraniode named tones (one file per tone)
-├── render/            Terminal output, profile detection, lipgloss adapter
-├── wtone/             .wtone file load/save
-└── internal/
-    └── testutil/      Zero-dependency test helpers
-```
-
-**Dependencies:** `github.com/BurntSushi/toml` (wtone only). The `core/`, `palette/`, `colour/`, and `render/` packages have **zero external dependencies**.
-
----
-
-## Design principles
-
-1. **OKLCH-first internally** — RGB is strictly output/terminal only
-2. **WonderMath above OKLCH** — perceptual corrections as a clean layer, not patches
-3. **Gamut safety mandatory** — iterative chroma reduction, hue never drifts
-4. **Human vocabulary** — Light, Vibrancy, Hue, Energy, Temperature, Mood
-5. **Immutable by default** — every method returns a new Tone
-6. **Energy is expressive** — same palette, different aliveness
-7. **Mood is mathematical** — derived from Valence + Arousal, not just a tag
-8. **One file per tone** — the `colour/` package is a browseable gallery
-9. **.wtone is the primary tool** — wondertone speaks in this format, you can use it to create tones, palettes, styles in wondertone
-
----
-
 ## License
 
 MIT — Leraniode
 
 ---
 
-Colourful Leraniode • Part of [Leraniode](https://github.com/leraniode) – Building Tools that feel alive 🌱.
+Part of [Leraniode](https://github.com/leraniode) – Building Tools that feel alive 🌱.
+
 <p align="left">
     <a href="https://github.com/leraniode">
         <img src="https://raw.githubusercontent.com/leraniode/.github/main/assets/footer/leraniodeproductbrandimage.png" width="600" />
