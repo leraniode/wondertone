@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   test:
-    name: Test (${{ matrix.os }} / Go ${{ matrix.go }})
+    name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -24,9 +24,10 @@ jobs:
           - ubuntu-latest
           - macos-latest
           - windows-latest
-        go:
-          - "1.22"
-          - "1.23"
+
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Checkout
@@ -35,7 +36,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go }}
+          go-version: "1.22"
           cache: true
           cache-dependency-path: |
             go.sum
@@ -62,7 +63,7 @@ jobs:
         run: go test -race ./...
 
       - name: Upload coverage
-        if: matrix.os == 'ubuntu-latest' && matrix.go == '1.23'
+        if: runner.os == 'Linux'
         uses: codecov/codecov-action@v4
         with:
           file: coverage.out
@@ -79,14 +80,16 @@ jobs:
           - adapters/colorful
           - adapters/lipgloss
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    defaults:
+      run:
+        shell: bash
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.22"
           cache: true
           cache-dependency-path: |
             adapters/colorful/go.sum
@@ -112,14 +115,16 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    defaults:
+      run:
+        shell: bash
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.22"
           cache: true
           cache-dependency-path: |
             go.sum
@@ -127,7 +132,7 @@ jobs:
             adapters/lipgloss/go.sum
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
           version: v2.2.1
           args: --timeout=5m
@@ -143,14 +148,16 @@ jobs:
           - adapters/colorful
           - adapters/lipgloss
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    defaults:
+      run:
+        shell: bash
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.22"
 
       - name: Check go.mod
         working-directory: ${{ matrix.module }}
