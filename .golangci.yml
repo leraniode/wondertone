@@ -8,13 +8,11 @@ linters:
     - unused
     - gosimple
     - ineffassign
-    - typecheck
     - gocritic
     - gofmt
     - misspell
     - unconvert
     - whitespace
-
 
 issues:
   max-issues-per-linter: 0
