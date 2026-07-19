@@ -11,10 +11,7 @@ A perceptual color intelligence library for Go — OKLCH under the hood, a human
 [![CI](https://github.com/leraniode/wondertone/actions/workflows/ci.yml/badge.svg)](https://github.com/leraniode/wondertone/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/leraniode/wondertone.svg)](https://pkg.go.dev/github.com/leraniode/wondertone)
 [![License](https://img.shields.io/github/license/leraniode/wondertone)](https://github.com/leraniode/wondertone/blob/main/LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/leraniode/wondertone)](https://goreportcard.com/report/github.com/leraniode/wondertone)
 [![Version](https://img.shields.io/github/v/tag/leraniode/wondertone)](https://github.com/leraniode/wondertone/releases)
-[![lipgloss adapter version](https://pkg.go.dev/github.com/leraniode/wondertone/adapters/lipgloss?tab=versions&color=blue)](https://pkg.go.dev/github.com/leraniode/wondertone/adapters/lipgloss)
-[![go-colourful adapter version](https://pkg.go.dev/github.com/leraniode/wondertone/adapters/colorful?tab=versions&color=blue)](https://pkg.go.dev/github.com/leraniode/wondertone/adapters/colorful)
 [![Go Modules](https://img.shields.io/github/go-mod/go-version/leraniode/wondertone)](https://github.com/leraniode/wondertone/blob/main/go.mod)
 
 > [!CAUTION]
@@ -333,8 +330,7 @@ colour.All()     // []Tone — all 12
 ```
 
 > [!IMPORTANT]
-> The colour package will be removed and will be used
-> for an entirely different purpose on the next release
+> The colour package will be removed on the next release
 
 ---
 
