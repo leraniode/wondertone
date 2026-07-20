@@ -4,12 +4,12 @@ import (
 	"strings"
 	"testing"
 
-	tone "github.com/leraniode/wondertone/core"
-	"github.com/leraniode/wondertone/colour"
 	wtlip "github.com/leraniode/wondertone/adapters/lipgloss"
-	"github.com/leraniode/wondertone/internal/testutil"
+	"github.com/leraniode/wondertone/colour"
+	tone "github.com/leraniode/wondertone/core"
 	"github.com/leraniode/wondertone/palette"
 	"github.com/leraniode/wondertone/render"
+	"github.com/leraniode/x/wtone/testutil"
 )
 
 func init() {
@@ -68,13 +68,13 @@ func TestPaletteStyles(t *testing.T) {
 
 func TestAdaptiveStylePicksCorrectVariant(t *testing.T) {
 	lightBg := tone.New(tone.Light(90), tone.Vibrancy(0), tone.Hue(0))
-	darkBg  := tone.New(tone.Light(10), tone.Vibrancy(0), tone.Hue(0))
+	darkBg := tone.New(tone.Light(10), tone.Vibrancy(0), tone.Hue(0))
 
 	onLight := colour.Ink
-	onDark  := colour.Paper
+	onDark := colour.Paper
 
 	lightStyle := wtlip.AdaptiveStyle(onLight, onDark, lightBg)
-	darkStyle  := wtlip.AdaptiveStyle(onLight, onDark, darkBg)
+	darkStyle := wtlip.AdaptiveStyle(onLight, onDark, darkBg)
 
 	// Both should render the text
 	testutil.True(t, strings.Contains(lightStyle.Render("x"), "x"))
@@ -83,7 +83,7 @@ func TestAdaptiveStylePicksCorrectVariant(t *testing.T) {
 	// The underlying colours should differ — Ink hex vs Paper hex
 	// We verify this through Color() directly, which is reliable and
 	// not subject to ANSI downsampling edge cases.
-	inkColor   := string(wtlip.Color(colour.Ink))
+	inkColor := string(wtlip.Color(colour.Ink))
 	paperColor := string(wtlip.Color(colour.Paper))
 	testutil.True(t, inkColor != paperColor,
 		"Ink and Paper should produce different lipgloss.Color values")

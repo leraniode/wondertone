@@ -10,8 +10,10 @@ github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd h1:vy0G
 github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd/go.mod h1:xe0nKWGd3eJgtqZRaN9RjMtK7xUYchjzPr7q6kcvCCs=
 github.com/charmbracelet/x/term v0.2.1 h1:AQeHeLZ1OqSXhrAWpYUtZyX1T3zVxfpZuEQMIQaGIAQ=
 github.com/charmbracelet/x/term v0.2.1/go.mod h1:oQ4enTYFV7QN4m0i9mzHrViD7TQKvNEEkHUMCmsxdUg=
-github.com/leraniode/wondertone v0.1.0 h1:yo4IySCz/XGd7eRAhxBpCqMhNa3CepUs43TsKLqEt5k=
-github.com/leraniode/wondertone v0.1.0/go.mod h1:u4JWDN+N50m+k3N/AqFFRDc9+RGLTODIy5+3uAXrD4M=
+github.com/leraniode/wondertone v0.2.0 h1:2JlYbNe3BcNxbQhRiiLhWL1LfLsB+rtgjWPR/yMESOs=
+github.com/leraniode/wondertone v0.2.0/go.mod h1:u4JWDN+N50m+k3N/AqFFRDc9+RGLTODIy5+3uAXrD4M=
+github.com/leraniode/x/wtone v0.0.0-20260720181536-1f55eab19163 h1:pfMfP7m8pWCqWqvUoCZp2euw3TPo+CeUx/XMeA/LRpA=
+github.com/leraniode/x/wtone v0.0.0-20260720181536-1f55eab19163/go.mod h1:y8pWjA3ycwym082Ar6vQt8v3/+6vVrTVTzU5QYR4CAI=
 github.com/lucasb-eyer/go-colorful v1.2.0 h1:1nnpGOrhyZZuNyfu1QjKiUICQ74+3FNCN69Aj6K7nkY=
 github.com/lucasb-eyer/go-colorful v1.2.0/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
