@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	tone "github.com/leraniode/wondertone/core"
-	"github.com/leraniode/wondertone/internal/testutil"
+	"github.com/leraniode/x/wtone/testutil"
 )
 
 // --- Construction ---
