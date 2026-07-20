@@ -3,10 +3,10 @@ package colorful_test
 import (
 	"testing"
 
-	gocolorful "github.com/lucasb-eyer/go-colorful"
-	tone "github.com/leraniode/wondertone/core"
 	wcolorful "github.com/leraniode/wondertone/adapters/colorful"
-	"github.com/leraniode/wondertone/internal/testutil"
+	tone "github.com/leraniode/wondertone/core"
+	"github.com/leraniode/x/wtone/testutil"
+	gocolorful "github.com/lucasb-eyer/go-colorful"
 )
 
 func TestToColorful(t *testing.T) {
@@ -52,7 +52,7 @@ func TestBlendColorfulVsNative(t *testing.T) {
 	b := tone.New(tone.Light(70), tone.Vibrancy(60), tone.Hue(200))
 
 	native := tone.Mix(a, b, 0.5)
-	via    := wcolorful.BlendColorful(a, b, 0.5)
+	via := wcolorful.BlendColorful(a, b, 0.5)
 
 	// Same lightness to within rounding
 	testutil.InDelta(t, native.Light(), via.Light(), 2.0,
