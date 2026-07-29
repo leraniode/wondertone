@@ -1,8 +1,8 @@
 # Changelog
 
 All notable changes to wondertone are documented here.
-Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Versioning follows [Semantic Versioning](https://semver.org/).
+Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+Versioning: [Semantic Versioning](https://semver.org/).
 
 ---
 
@@ -10,61 +10,125 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [0.1.0] — 2026-03-04
+## [0.3.0] — 2026-07-29
 
-Initial release. The full wondertone Go library.
+A decision-point release. Wondertone is a pure Go colour library — nothing
+more, nothing less. Everything that didn't serve that identity is removed.
+
+### Changed
+
+**Package structure — packages expanded into focused packages**
+
+| Old                                  | New                   |
+| ------------------------------------ | --------------------- |
+| `core/` (Tone type, scale)           | `tone/`               |
+| `core/` (WonderMath)                 | `space/`              |
+| `core/` (OKLab mixing)               | `mix/`                |
+| `palette/` (harmony generators)      | `harmony/`            |
+| `palette/` (contrast, accessibility) | `contrast/`           |
+| `palette/` (Palette type)            | `palette/`            |
+| `render/`                            | `render/` (unchanged) |
+
+Import paths change accordingly:
+
+```go
+// before
+import tone "github.com/leraniode/wondertone/core"
+// after
+import "github.com/leraniode/wondertone/tone"
+import "github.com/leraniode/wondertone/space"
+import "github.com/leraniode/wondertone/mix"
+```
+
+**Raw OKLCH accessors added to Tone**
+
+`RawL()`, `RawC()`, `RawH()` expose the internal OKLCH coordinates for
+downstream packages and power users who need to work below the vocabulary level.
+
+### Removed
+
+- `adapters/` — gone entirely. `render/lipgloss.go` has two lightweight functions, no new dep introduced.
+- `wtone/` — removed. Wondertone is pure Go. but can still be found at `leraniode/x/wtone`.
+- `colour/`, `palette/builtin/` - planned for separate repo
+- `internal/testutil/` — moved to `leraniode/x` as `x/testutil`.
+
+### Updated
+
+- `go.mod` — removed `x/wtone` dep, added `x/testutil v0.1.0`.
+- CI workflow — removed dead adapter jobs, cleaned up cache paths.
+
+### Breaking
+
+All `core/` import paths changed, some expected APIs have been moved to new packages.
+`colour/` and `palette/builtin/` packages no longer exist in this module.
+
+---
+
+## [0.2.0] — 2026-03-06
+
+WonderMath — Wondertone's perceptual colour science layer above OKLCH.
 
 ### Added
 
-**`core/` — the Tone type**
-- `Tone` struct with Light, Vibrancy, Hue, Energy vocabulary
-- Constructors: `New()` (option pattern), `FromHex()`, `FromOKLCH()`, `FromOKLCHString()`
-- Full immutable manipulation API: `WithLight`, `Lighten`, `Darken`, `Rotate`, `Complement`, `Saturate`, `Desaturate`, `WithEnergy`, etc.
-- OKLCH pipeline, public-domain math — zero external dependencies in core
-- Iterative gamut mapping — hue never drifts
-- `ToneScale` — 12-step perceptual scale with semantic accessors
-- OKLab mixing: `Mix`, `Gradient`, `Blend`, `Harmonize`, `Shift`
-- WCAG accessibility: `ContrastWith`, `PassesAA`, `PassesAAA`, `EnsureContrast`
-- Intelligence: `IsLight`, `IsDark`, `Temperature`
+**`core/wondermath.go` — six perceptual formulas**
 
-**`colour/` — Leraniode named tones**
-- Unix, Starlight, Ember, Glacier, Crimson, Void, Dawn, Bloom, Slate, Signal, Ink, Paper
-- `All()` collection helper
+- **Corrected Hue** — Gaussian blue-drift correction (H₀=250, w=30°, A=-3°)
+- **Perceived Chroma** — V^α power law + k(H) per-hue weight table (α=0.9)
+- **Effective Chroma** — Stevens' power law Energy scaling (γ=0.7)
+- **Effective Lightness** — subtle glow at high Energy (λ=0.04)
+- **Temperature Value** — continuous warm↔cool scalar [-1, +1]
+- **Valence + Arousal + DerivedMood** — Mood derived from colour math
 
-**`palette/` — Palette management**
-- `Palette` with builder pattern: `New().Add().Build()`
-- Immutable operations: `Fork`, `Extend`, `Replace`, `WithEnergy`
-- `Validate()` with `ValidationReport`
-- Harmony generators: `Complementary`, `Triadic`, `Analogous`, `SplitComplementary`, `Tetradic`, `Monochrome`, `Rainbow`
-- Contrast tools: `ContrastPair`, `EnsurePairContrast`, `ContrastMatrix`, `FindReadablePairs`
+**New Tone accessors**
 
-**`palette/builtin/` — Built-in palettes**
-- Midnight (dark navy), Aurora (light), Ember (warm dark), Glacier (cool dark), Rosewood (rose dark)
-- `All()` and `Names()` helpers
+```go
+t.TemperatureScalar() float64
+t.DerivedMoodValue()  string
+t.ValenceValue()      float64
+t.ArousalValue()      float64
+```
 
-**`render/` — Terminal output**
-- Profile detection: `Detect()` reads `NO_COLOR`, `COLORTERM`, `TERM`, `TERM_PROGRAM`
-- `FG()`, `BG()`, `Colorize()`, `ColorizeOnBG()`, `Swatch()`
-- Perceptual ANSI256/16 downsampling via OKLab ΔE nearest-neighbor
-- `LipglossColor()` adapter for charmbracelet/lipgloss
+### Breaking
 
-**`wtone/` — File format**
-- Load/save `.wtone` (TOML-based palette files)
-- `[[colors]]` array format — order preserved
-- Shorthand `oklch = "L C H"` and explicit `l/c/h` fields
-- Mood inheritance from palette to tones
+- Hex output shifts — blues corrected, Energy non-linear, high-energy glow
+- `Temperature()` behaviour changed — continuous formula, not hue-range lookup
+- `EffectiveC()` non-linear — returns `C × E^γ` not `C × E`
+- Vibrancy → Chroma mapping changed — V^α + k(H) applied at construction
 
-**`internal/testutil/`**
-- Zero-dependency test helpers — no gopkg.in/yaml.v3 transitive issues
+---
 
-**`adapters/`**
-- `lipgloss/` — Adapter for wondertone interop with charmbracelet/lipgloss
-- `go-colorful/` — Adapter for interop with github.com/lucasb-eyer/go-colorful
-- Released as seperate modules each with `go.mod` and `go.sum` to avoid transitive dependency issues
+## [0.1.1] — 2026-03-05
 
-**CI**
-- GitHub Actions: test matrix (ubuntu/macos/windows × go1.22/1.23)
-- golangci-lint
-- Release workflow on `v*.*.*` tags
+### Fixed
 
+`adapters/lipgloss` — `SetColorProfile` sync for non-TTY rendering.
+lipgloss's default renderer detected "no TTY" at startup and stripped
+all colour. Fixed by calling `lipgloss.SetColorProfile()` in both
+`init()` and `SetProfile()`.
+
+---
+
+## [0.1.0] — 2026-03-04
+
+Initial release.
+
+### Added
+
+- `Tone` type with Light/Vibrancy/Hue/Energy vocabulary
+- Constructors: `New()`, `FromHex()`, `FromOKLCH()`, `FromOKLCHString()`
+- Full immutable manipulation API
+- OKLCH pipeline, iterative gamut safety (hue never drifts)
+- `ToneScale` — 12-step perceptual scale
+- OKLab mixing: `Mix`, `Gradient`, `Blend`
+- WCAG accessibility: `ContrastWith`, `PassesAA`, `PassesAAA`
+- Harmony generators: Complementary, Triadic, Analogous, etc.
+- Profile detection, terminal rendering, ANSI256/16 downsampling
+- GitHub Actions CI (ubuntu / macos / windows)
+
+---
+
+[Unreleased]: https://github.com/leraniode/wondertone/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/leraniode/wondertone/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/leraniode/wondertone/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/leraniode/wondertone/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/leraniode/wondertone/releases/tag/v0.1.0
