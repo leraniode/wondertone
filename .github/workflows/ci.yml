@@ -15,7 +15,7 @@ permissions:
 jobs:
   test:
     name: Test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }})
 
     strategy:
       fail-fast: false
@@ -38,10 +38,7 @@ jobs:
         with:
           go-version: "1.22"
           cache: true
-          cache-dependency-path: |
-            go.sum
-            adapters/colorful/go.sum
-            adapters/lipgloss/go.sum
+          cache-dependency-path: go.sum
 
       - name: Download dependencies
         run: go mod download
@@ -70,61 +67,9 @@ jobs:
           flags: unittests
           fail_ci_if_error: false
 
-  adapters:
-    name: Test adapters
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        module:
-          - adapters/colorful
-          - adapters/lipgloss
-
-    defaults:
-      run:
-        shell: bash
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.22"
-          cache: true
-          cache-dependency-path: |
-            adapters/colorful/go.sum
-            adapters/lipgloss/go.sum
-
-      - name: Download dependencies
-        working-directory: ${{ matrix.module }}
-        run: go mod download
-
-      - name: Verify dependencies
-        working-directory: ${{ matrix.module }}
-        run: go mod verify
-
-      - name: Build
-        working-directory: ${{ matrix.module }}
-        run: go build ./...
-
-      - name: Test
-        working-directory: ${{ matrix.module }}
-        run: go test -race ./...
-
   tidy:
-    name: Verify go.mod files
+    name: Verify go.mod
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        module:
-          - .
-          - adapters/colorful
-          - adapters/lipgloss
-
-    defaults:
-      run:
-        shell: bash
 
     steps:
       - uses: actions/checkout@v4
@@ -134,7 +79,6 @@ jobs:
           go-version: "1.22"
 
       - name: Check go.mod
-        working-directory: ${{ matrix.module }}
         run: |
           go mod tidy
           git diff --exit-code -- go.mod go.sum
