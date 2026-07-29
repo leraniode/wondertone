@@ -1,2 +1,2 @@
-github.com/leraniode/x/wtone v0.0.0-20260720181536-1f55eab19163 h1:pfMfP7m8pWCqWqvUoCZp2euw3TPo+CeUx/XMeA/LRpA=
-github.com/leraniode/x/wtone v0.0.0-20260720181536-1f55eab19163/go.mod h1:y8pWjA3ycwym082Ar6vQt8v3/+6vVrTVTzU5QYR4CAI=
+github.com/leraniode/x/testutil v0.1.0 h1:S8/mDfUMOTuGLcYlxvmy9tSACYoyeQNDjeh/7oUVz04=
+github.com/leraniode/x/testutil v0.1.0/go.mod h1:4S9t0qH3S3weAMVnMMf7fO3Lid5lyMXclR9Ev/D1c3Y=
