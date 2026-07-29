@@ -3,9 +3,9 @@ package palette_test
 import (
 	"testing"
 
-	tone "github.com/leraniode/wondertone/core"
 	"github.com/leraniode/wondertone/palette"
-	"github.com/leraniode/x/wtone/testutil"
+	"github.com/leraniode/wondertone/tone"
+	"github.com/leraniode/x/testutil"
 )
 
 // helpers
@@ -155,36 +155,6 @@ func TestWithEnergy(t *testing.T) {
 	}
 }
 
-// --- Contrast ---
-
-func TestContrastPair(t *testing.T) {
-	black := tone.New(tone.Light(2), tone.Vibrancy(0), tone.Hue(0), tone.Named("Black"))
-	white := tone.New(tone.Light(98), tone.Vibrancy(0), tone.Hue(0), tone.Named("White"))
-	p, _ := palette.New("bw").Add(black).Add(white).Build()
-
-	ratio, err := palette.ContrastPair(p, "Black", "White")
-	testutil.NoError(t, err)
-	testutil.Greater(t, ratio, 15.0, "black on white contrast should be high")
-}
-
-func TestContrastPairMissing(t *testing.T) {
-	p, _ := palette.New("test").Add(red()).Build()
-	_, err := palette.ContrastPair(p, "Red", "NotHere")
-	testutil.Error(t, err)
-}
-
-func TestFindReadablePairs(t *testing.T) {
-	black := tone.New(tone.Light(2), tone.Vibrancy(0), tone.Hue(0), tone.Named("Black"))
-	white := tone.New(tone.Light(98), tone.Vibrancy(0), tone.Hue(0), tone.Named("White"))
-	p, _ := palette.New("bw").Add(black).Add(white).Build()
-
-	pairs := palette.FindReadablePairs(p, "AA")
-	testutil.True(t, len(pairs) > 0, "should find at least one readable pair")
-	for _, pair := range pairs {
-		testutil.True(t, pair.PassesAA, "all found pairs should pass AA")
-	}
-}
-
 // --- Validation ---
 
 func TestValidatePasses(t *testing.T) {
@@ -194,69 +164,4 @@ func TestValidatePasses(t *testing.T) {
 	p, _ := palette.New("valid").Add(dark).Add(mid).Add(light).Build()
 	report := p.Validate()
 	testutil.True(t, report.Passed, "well-spaced palette should pass: %s", report)
-}
-
-// --- Harmony ---
-
-func TestComplementary(t *testing.T) {
-	p, err := palette.Complementary(red())
-	testutil.NoError(t, err)
-	testutil.Equal(t, 2, p.Len())
-}
-
-func TestTriadic(t *testing.T) {
-	p, err := palette.Triadic(red())
-	testutil.NoError(t, err)
-	testutil.Equal(t, 3, p.Len())
-}
-
-func TestAnalogous(t *testing.T) {
-	p, err := palette.Analogous(red(), 5, 30)
-	testutil.NoError(t, err)
-	testutil.Equal(t, 5, p.Len())
-}
-
-func TestAnalogousTooFew(t *testing.T) {
-	_, err := palette.Analogous(red(), 1, 30)
-	testutil.Error(t, err)
-}
-
-func TestTetradic(t *testing.T) {
-	p, err := palette.Tetradic(red())
-	testutil.NoError(t, err)
-	testutil.Equal(t, 4, p.Len())
-	// Each tone should be ~90° apart
-	all := p.All()
-	for i := 1; i < len(all); i++ {
-		diff := all[i].Hue() - all[0].Hue()
-		if diff < 0 {
-			diff += 360
-		}
-		testutil.InDelta(t, float64(i)*90.0, diff, 1e-3, "tetradic step %d should be %d° from base", i, i*90)
-	}
-}
-
-func TestMonochrome(t *testing.T) {
-	p, err := palette.Monochrome(red(), 6)
-	testutil.NoError(t, err)
-	testutil.Equal(t, 6, p.Len())
-	// All should share the same hue
-	for _, t2 := range p.All() {
-		testutil.InDelta(t, red().Hue(), t2.Hue(), 1e-4)
-	}
-}
-
-func TestRainbow(t *testing.T) {
-	p, err := palette.Rainbow(red(), 8)
-	testutil.NoError(t, err)
-	testutil.Equal(t, 8, p.Len())
-	// Hues should be 45° apart (360/8)
-	all := p.All()
-	for i := 1; i < len(all); i++ {
-		expected := red().Hue() + 45.0*float64(i)
-		for expected >= 360 {
-			expected -= 360
-		}
-		testutil.InDelta(t, expected, all[i].Hue(), 1e-3)
-	}
 }

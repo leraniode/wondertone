@@ -1,6 +1,4 @@
-package core
-
-// wondermath.go — WonderSpace colour math layer.
+// Package space is Wondertone's perceptual colour math layer known as WonderMath.
 //
 // This is the layer above OKLCH. Every formula here corrects a known weakness
 // in raw OKLCH or adds a new perceptual dimension that OKLCH does not have.
@@ -15,6 +13,7 @@ package core
 //  3. TemperatureValue    — continuous warm↔cool scalar
 //  4. Valence + Arousal   — mood as a 2D vector
 //  5. DerivedMood         — map valence/arousal vector to named mood
+package space
 
 import "math"
 
@@ -83,7 +82,7 @@ var kHueControlPoints = [][2]float64{
 // Interpolated via linear interpolation between control points.
 // (Catmull-Rom spline is ideal but linear is sufficient for initial tuning.)
 func kHue(h float64) float64 {
-	h = normalizeHue(h)
+	h = NormalizeHue(h)
 	pts := kHueControlPoints
 
 	// Find surrounding control points
@@ -98,8 +97,6 @@ func kHue(h float64) float64 {
 	return 1.0
 }
 
-// --- 2.1 CorrectedHue ---
-
 // CorrectedHue applies the WonderMath blue-drift correction.
 // Returns H' — the perceptually corrected hue.
 //
@@ -110,7 +107,7 @@ func kHue(h float64) float64 {
 // The Gaussian is chroma-weighted: grey tones get zero correction.
 // Only vivid blues near H≈250° are nudged back from purple.
 func CorrectedHue(h, c, l float64) float64 {
-	cMax := maxChromaForLH(l, h)
+	cMax := MaxChromaForLH(l, h)
 	if cMax <= 0 {
 		return h
 	}
@@ -128,8 +125,6 @@ func CorrectedHue(h, c, l float64) float64 {
 	return result
 }
 
-// --- 2.2 PerceivedChroma ---
-
 // PerceivedChroma converts Vibrancy [0–100] to raw OKLCH chroma C using
 // the full WonderMath pipeline:
 //
@@ -139,16 +134,14 @@ func CorrectedHue(h, c, l float64) float64 {
 // Energy is NOT applied here — it is applied separately in EffectiveC.
 // This is the stored chroma value: what the tone IS, not how it renders.
 func PerceivedChroma(vibrancy, l, h float64) float64 {
-	cMax := maxChromaForLH(l, h)
+	cMax := MaxChromaForLH(l, h)
 	if cMax <= 0 {
 		return 0
 	}
-	v := clamp(vibrancy/100.0, 0, 1)
+	v := Clamp(vibrancy/100.0, 0, 1)
 	rawC := cMax * math.Pow(v, wmVibrancyAlpha)
 	return rawC * kHue(h)
 }
-
-// --- 2.3 EffectiveChroma (Energy, Stevens' power law) ---
 
 // EffectiveChroma applies the perceptually linear Energy scaling to chroma.
 //
@@ -178,11 +171,9 @@ func EffectiveChroma(c, energy float64) float64 {
 // λ = 0.04 means full-energy tone gets +4% lightness max.
 // At Energy=0.5: L_effective = L + 0.04 * (0.5^0.7 - 1) ≈ L - 0.015
 func EffectiveLightness(l, energy float64) float64 {
-	glow := wmEnergyLambda * (math.Pow(clamp(energy, 0, 1), wmEnergyGamma) - 1)
-	return clamp(l+glow, 0, 1)
+	glow := wmEnergyLambda * (math.Pow(Clamp(energy, 0, 1), wmEnergyGamma) - 1)
+	return Clamp(l+glow, 0, 1)
 }
-
-// --- 2.4 TemperatureValue ---
 
 // TemperatureValue returns a continuous warm↔cool scalar T ∈ [-1, +1].
 //
@@ -199,14 +190,14 @@ func EffectiveLightness(l, energy float64) float64 {
 // definitely warm or cool). Lightness nudges slightly (dark oranges read
 // slightly cooler than bright ones).
 func TemperatureValue(h, c, l float64) float64 {
-	cMax := maxChromaForLH(l, h)
+	cMax := MaxChromaForLH(l, h)
 	chromaNorm := 0.0
 	if cMax > 0 {
 		chromaNorm = c / cMax
 	}
 	raw := math.Cos((h - wmTempHWarm) * math.Pi / 180.0)
 	t := wmTempWH*raw + wmTempWC*chromaNorm + wmTempWL*(l-0.5)
-	return clamp(t, -1, 1)
+	return Clamp(t, -1, 1)
 }
 
 // TemperatureLabel maps a continuous temperature value to "warm", "cool",
@@ -222,8 +213,6 @@ func TemperatureLabel(tv float64) string {
 	}
 }
 
-// --- 2.5 Valence and Arousal ---
-
 // Valence returns the emotional valence of a tone ∈ [-1, +1].
 //
 //	+1.0 = most positive (bright, light, warm)
@@ -234,7 +223,7 @@ func TemperatureLabel(tv float64) string {
 //	valence = clamp(a1*T + a2*L + a3*S, -1, 1)
 func Valence(tv, l, saturation float64) float64 {
 	v := wmValenceA1*tv + wmValenceA2*l + wmValenceA3*saturation
-	return clamp(v, -1, 1)
+	return Clamp(v, -1, 1)
 }
 
 // Arousal returns the emotional arousal/energy level of a tone ∈ [-1, +1].
@@ -247,10 +236,8 @@ func Valence(tv, l, saturation float64) float64 {
 //	arousal = clamp(b1*S + b2*E + b3*T, -1, 1)
 func Arousal(saturation, energy, tv float64) float64 {
 	a := wmArousalB1*saturation + wmArousalB2*energy + wmArousalB3*tv
-	return clamp(a, -1, 1)
+	return Clamp(a, -1, 1)
 }
-
-// --- 2.6 DerivedMood ---
 
 // DerivedMood maps a valence/arousal vector to a named mood.
 // This replaces the manual Moody() tag with a mathematically derived value.
@@ -289,16 +276,4 @@ func DerivedMood(valence, arousal, temperatureValue float64) string {
 	default:
 		return "calm"
 	}
-}
-
-// --- Helpers ---
-
-// normalizedSaturation returns C / C_max — the normalised saturation [0,1]
-// used in the mood formulas. Same as Vibrancy/100 but computed from raw C.
-func normalizedSaturation(c, l, h float64) float64 {
-	cMax := maxChromaForLH(l, h)
-	if cMax <= 0 {
-		return 0
-	}
-	return clamp(c/cMax, 0, 1)
 }

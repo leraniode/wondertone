@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	tone "github.com/leraniode/wondertone/core"
 	"github.com/leraniode/wondertone/render"
-	"github.com/leraniode/x/wtone/testutil"
+	"github.com/leraniode/wondertone/tone"
+	"github.com/leraniode/x/testutil"
 )
 
 var unix = tone.New(

@@ -1,25 +1,29 @@
-// Package core is the heart of wondertone.
+// Package tone is the fundamental unit of wondertone.
 //
-// Import it as "tone" for the most natural developer experience:
+// A Tone is a named, immutable colour with a human vocabulary:
+// Light, Vibrancy, Hue, Energy, and Mood. Under the hood it runs
+// on OKLCH with WonderMath perceptual corrections applied at render time.
 //
-//	import tone "github.com/leraniode/wondertone/core"
+//	import "github.com/leraniode/wondertone/tone"
 //
 //	spark := tone.New(
 //	    tone.Light(75),
 //	    tone.Vibrancy(80),
 //	    tone.Hue(30),
 //	    tone.Energy(0.9),
-//	    tone.Named("Primary Spark"),
-//	    tone.Moody("vibrant"),
+//	    tone.Named("Spark"),
 //	)
 //
-// Wondertone speaks in Light, Vibrancy, Hue, and Energy.
-// OKLCH is the engine. You never have to know it exists.
-package core
+//	spark.Hex()              // gamut-safe hex output
+//	spark.Temperature()      // "warm" / "cool" / "neutral"
+//	spark.DerivedMoodValue() // mathematically derived mood
+package tone
 
 import (
 	"fmt"
 	"math"
+
+	"github.com/leraniode/wondertone/space"
 )
 
 // Tone is the atomic unit of wondertone — a living, named color.
@@ -63,7 +67,7 @@ type Option func(*Tone)
 // 0 is black. 100 is white. 50 is a true mid-tone.
 func Light(v float64) Option {
 	return func(t *Tone) {
-		t.light = clamp(v, 0, 100)
+		t.light = space.Clamp(v, 0, 100)
 		t.l = t.light / 100.0
 	}
 }
@@ -76,7 +80,7 @@ func Light(v float64) Option {
 // This means Vibrancy(80) always looks 80% vivid regardless of hue.
 func Vibrancy(v float64) Option {
 	return func(t *Tone) {
-		t.vibrancy = clamp(v, 0, 100)
+		t.vibrancy = space.Clamp(v, 0, 100)
 		// c is computed after all options are applied in New()
 		// because it depends on both vibrancy and the final L/H values.
 	}
@@ -86,7 +90,7 @@ func Vibrancy(v float64) Option {
 // 0/360=red, 30=orange, 60=yellow, 120=green, 180=cyan, 240=blue, 300=magenta.
 func Hue(v float64) Option {
 	return func(t *Tone) {
-		t.hue = normalizeHue(v)
+		t.hue = space.NormalizeHue(v)
 	}
 }
 
@@ -96,7 +100,7 @@ func Hue(v float64) Option {
 // A palette can whisper or shout — same colors, different energy.
 func Energy(v float64) Option {
 	return func(t *Tone) {
-		t.energy = clamp(v, 0, 1)
+		t.energy = space.Clamp(v, 0, 1)
 	}
 }
 
@@ -113,7 +117,7 @@ func Moody(mood string) Option {
 
 // Alpha sets the opacity [0–1]. Default is 1.0 (fully opaque).
 func Alpha(a float64) Option {
-	return func(t *Tone) { t.a = clamp(a, 0, 1) }
+	return func(t *Tone) { t.a = space.Clamp(a, 0, 1) }
 }
 
 // --- Constructors ---
@@ -141,7 +145,7 @@ func New(opts ...Option) Tone {
 	}
 	// Compute OKLCH chroma via WonderMath PerceivedChroma:
 	// applies gamut ceiling, power-law V^α shaping, and k(H) hue weight.
-	t.c = PerceivedChroma(t.vibrancy, t.l, t.hue)
+	t.c = space.PerceivedChroma(t.vibrancy, t.l, t.hue)
 	return t
 }
 
@@ -149,13 +153,13 @@ func New(opts ...Option) Tone {
 // This is the power-user escape hatch — use New() for the normal path.
 // L [0–1], C [0–~0.37], H [0–360).
 func FromOKLCH(l, c, h float64) Tone {
-	l = clamp(l, 0, 1)
+	l = space.Clamp(l, 0, 1)
 	c = math.Max(0, c)
-	h = normalizeHue(h)
-	maxC := maxChromaForLH(l, h)
+	h = space.NormalizeHue(h)
+	maxC := space.MaxChromaForLH(l, h)
 	vibrancy := 0.0
 	if maxC > 0 {
-		vibrancy = clamp((c/maxC)*100, 0, 100)
+		vibrancy = space.Clamp((c/maxC)*100, 0, 100)
 	}
 	return Tone{
 		light:    l * 100,
@@ -174,11 +178,11 @@ func FromHex(s string) (Tone, error) {
 	if err != nil {
 		return Tone{}, err
 	}
-	return fromLinearRGB(r, g, b, a), nil
+	return FromLinearRGB(r, g, b, a), nil
 }
 
 // MustFromHex parses a hex string and panics on error.
-// Use only for known-good compile-time constants (e.g. in colour/ package).
+// Use only for known-good compile-time constants.
 func MustFromHex(s string) Tone {
 	t, err := FromHex(s)
 	if err != nil {
@@ -194,11 +198,11 @@ func FromOKLCHString(s string) (Tone, error) {
 		return Tone{}, err
 	}
 	t := FromOKLCH(l, c, h)
-	t.a = clamp(a, 0, 1)
+	t.a = space.Clamp(a, 0, 1)
 	return t, nil
 }
 
-// --- Accessors (developer vocabulary) ---
+// --- Accessors ---
 
 // Light returns the perceptual lightness [0–100].
 func (t Tone) Light() float64 { return t.light }
@@ -221,7 +225,7 @@ func (t Tone) Mood() string { return t.mood }
 // AlphaValue returns the opacity [0–1].
 func (t Tone) AlphaValue() float64 { return t.a }
 
-// --- OKLCH access (power users) ---
+// --- OKLCH access ---
 
 // OKLCH returns the raw internal OKLCH values: L [0–1], C [0–~0.37], H [0–360).
 func (t Tone) OKLCH() (l, c, h float64) {
@@ -229,9 +233,18 @@ func (t Tone) OKLCH() (l, c, h float64) {
 }
 
 // OKLCHString returns the canonical OKLCH string: "0.750000 0.150000 30.000000".
-// This is what .wtone files store — full precision, no loss.
 func (t Tone) OKLCHString() string {
 	return formatOKLCHString(t.l, t.c, t.hue, t.a)
+}
+
+// RawL returns the value of L
+func (t Tone) RawL() float64 {
+	return t.l
+}
+
+// RawC returns the value of C
+func (t Tone) RawC() float64 {
+	return t.c
 }
 
 // --- Conversion output ---
@@ -239,7 +252,7 @@ func (t Tone) OKLCHString() string {
 // Hex returns the color as a lowercase CSS hex string.
 // Gamut-safe: out-of-range OKLCH values are mapped into sRGB before encoding.
 func (t Tone) Hex() string {
-	r, g, b := t.toSRGB()
+	r, g, b := t.ToSRGB()
 	if t.a >= 1.0 {
 		return fmt.Sprintf("#%02x%02x%02x",
 			uint8(math.Round(r*255)),
@@ -257,14 +270,14 @@ func (t Tone) Hex() string {
 
 // RGB returns gamma-encoded sRGB values [0–255].
 func (t Tone) RGB() (r, g, b uint8) {
-	rf, gf, bf := t.toSRGB()
+	rf, gf, bf := t.ToSRGB()
 	return uint8(math.Round(rf * 255)),
 		uint8(math.Round(gf * 255)),
 		uint8(math.Round(bf * 255))
 }
 
 // RGBFloat returns gamma-encoded sRGB values [0.0–1.0].
-func (t Tone) RGBFloat() (r, g, b float64) { return t.toSRGB() }
+func (t Tone) RGBFloat() (r, g, b float64) { return t.ToSRGB() }
 
 // String implements fmt.Stringer — returns hex representation.
 func (t Tone) String() string { return t.Hex() }
@@ -276,7 +289,7 @@ func (t Tone) String() string { return t.Hex() }
 // Energy=0.5 now feels half as alive, not 60% as alive.
 // The stored C and Energy are never modified.
 func (t Tone) EffectiveC() float64 {
-	return EffectiveChroma(t.c, t.energy)
+	return space.EffectiveChroma(t.c, t.energy)
 }
 
 // --- Manipulation (all immutable — returns new Tone) ---
@@ -308,7 +321,7 @@ func (t Tone) WithHue(h float64) Tone {
 // WithEnergy returns a new Tone with the given energy [0–1].
 func (t Tone) WithEnergy(e float64) Tone {
 	nt := t
-	nt.energy = clamp(e, 0, 1)
+	nt.energy = space.Clamp(e, 0, 1)
 	return nt
 }
 
@@ -329,7 +342,7 @@ func (t Tone) WithMood(mood string) Tone {
 // WithAlpha returns a new Tone with the given alpha [0–1].
 func (t Tone) WithAlpha(a float64) Tone {
 	nt := t
-	nt.a = clamp(a, 0, 1)
+	nt.a = space.Clamp(a, 0, 1)
 	return nt
 }
 
@@ -356,7 +369,7 @@ func (t Tone) Desaturate(amount float64) Tone {
 // Rotate returns a new Tone with hue rotated by degrees.
 // Accepts negative values (counter-clockwise).
 func (t Tone) Rotate(degrees float64) Tone {
-	return t.WithHue(normalizeHue(t.hue + degrees))
+	return t.WithHue(space.NormalizeHue(t.hue + degrees))
 }
 
 // Complement returns the Tone directly opposite on the hue wheel (+180°).
@@ -376,49 +389,49 @@ func (t Tone) IsDark() bool { return t.light <= 50 }
 // Upgraded in v0.2: uses WonderMath continuous formula instead of hue-range
 // lookup — chroma and lightness now modulate the reading.
 func (t Tone) Temperature() string {
-	tv := TemperatureValue(t.hue, t.c, t.l)
-	return TemperatureLabel(tv)
+	tv := space.TemperatureValue(t.hue, t.c, t.l)
+	return space.TemperatureLabel(tv)
 }
 
 // TemperatureScalar returns the continuous warm↔cool value T ∈ [-1, +1].
 // +1 = maximally warm, -1 = maximally cool, 0 = neutral.
 // More precise than Temperature() which returns a label.
 func (t Tone) TemperatureScalar() float64 {
-	return TemperatureValue(t.hue, t.c, t.l)
+	return space.TemperatureValue(t.hue, t.c, t.l)
 }
 
 // DerivedMoodValue returns the mathematically derived mood string.
 // Computed from valence and arousal — independent of the stored Mood() tag.
 // Use Mood() for the display label (manual override takes precedence).
 func (t Tone) DerivedMoodValue() string {
-	s := normalizedSaturation(t.c, t.l, t.hue)
-	tv := TemperatureValue(t.hue, t.c, t.l)
-	val := Valence(tv, t.l, s)
-	aro := Arousal(s, t.energy, tv)
-	return DerivedMood(val, aro, tv)
+	s := space.NormalizedSaturation(t.c, t.l, t.hue)
+	tv := space.TemperatureValue(t.hue, t.c, t.l)
+	val := space.Valence(tv, t.l, s)
+	aro := space.Arousal(s, t.energy, tv)
+	return space.DerivedMood(val, aro, tv)
 }
 
 // Valence returns the emotional valence of this tone ∈ [-1, +1].
 // +1 = positive (bright, warm, vivid). -1 = negative (dark, cool, muted).
 func (t Tone) ValenceValue() float64 {
-	s := normalizedSaturation(t.c, t.l, t.hue)
-	tv := TemperatureValue(t.hue, t.c, t.l)
-	return Valence(tv, t.l, s)
+	s := space.NormalizedSaturation(t.c, t.l, t.hue)
+	tv := space.TemperatureValue(t.hue, t.c, t.l)
+	return space.Valence(tv, t.l, s)
 }
 
 // ArousalValue returns the emotional arousal of this tone ∈ [-1, +1].
 // +1 = activated (vivid, energetic). -1 = calm (muted, quiet).
 func (t Tone) ArousalValue() float64 {
-	s := normalizedSaturation(t.c, t.l, t.hue)
-	tv := TemperatureValue(t.hue, t.c, t.l)
-	return Arousal(s, t.energy, tv)
+	s := space.NormalizedSaturation(t.c, t.l, t.hue)
+	tv := space.TemperatureValue(t.hue, t.c, t.l)
+	return space.Arousal(s, t.energy, tv)
 }
 
 // --- Accessibility ---
 
 // Luminance returns the WCAG 2.1 relative luminance [0–1].
 func (t Tone) Luminance() float64 {
-	r, g, b := t.toSRGB()
+	r, g, b := t.ToSRGB()
 	lin := func(v float64) float64 {
 		if v <= 0.04045 {
 			return v / 12.92
@@ -509,39 +522,19 @@ func (t Tone) Equal(other Tone) bool {
 //  1. CorrectedHue       — fix blue-purple drift
 //  2. EffectiveChroma    — Stevens' power law energy scaling
 //  3. EffectiveLightness — subtle glow at high energy
-func (t Tone) toSRGB() (r, g, b float64) {
-	h := CorrectedHue(t.hue, t.c, t.l)
-	c := EffectiveChroma(t.c, t.energy)
-	l := EffectiveLightness(t.l, t.energy)
-	l, c, h = toGamutSafe(l, c, h)
-	lr, lg, lb := oklchToLinearRGB(l, c, h)
-	return linearToSRGB(lr), linearToSRGB(lg), linearToSRGB(lb)
+func (t Tone) ToSRGB() (r, g, b float64) {
+	h := space.CorrectedHue(t.hue, t.c, t.l)
+	c := space.EffectiveChroma(t.c, t.energy)
+	l := space.EffectiveLightness(t.l, t.energy)
+	l, c, h = space.ToGamutSafe(l, c, h)
+	lr, lg, lb := space.OKLCHToLinearRGB(l, c, h)
+	return space.LinearToSRGB(lr), space.LinearToSRGB(lg), space.LinearToSRGB(lb)
 }
 
 // fromLinearRGB constructs a Tone from linear sRGB [0–1] values.
-func fromLinearRGB(r, g, b, a float64) Tone {
-	l, c, h := linearRGBToOKLCH(r, g, b)
+func FromLinearRGB(r, g, b, a float64) Tone {
+	l, c, h := space.LinearRGBToOKLCH(r, g, b)
 	t := FromOKLCH(l, c, h)
-	t.a = clamp(a, 0, 1)
+	t.a = space.Clamp(a, 0, 1)
 	return t
-}
-
-// clamp restricts v to [min, max].
-func clamp(v, min, max float64) float64 {
-	if v < min {
-		return min
-	}
-	if v > max {
-		return max
-	}
-	return v
-}
-
-// normalizeHue wraps hue to [0, 360).
-func normalizeHue(h float64) float64 {
-	h = math.Mod(h, 360)
-	if h < 0 {
-		h += 360
-	}
-	return h
 }

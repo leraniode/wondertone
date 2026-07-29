@@ -13,7 +13,7 @@ package palette
 import (
 	"fmt"
 
-	tone "github.com/leraniode/wondertone/core"
+	"github.com/leraniode/wondertone/tone"
 )
 
 // Palette is an ordered, named collection of Tones.
@@ -209,7 +209,72 @@ func (p *Palette) WithEnergy(e float64) *Palette {
 	return result
 }
 
+// ValidationReport summarises quality checks for a Palette.
+type ValidationReport struct {
+	PaletteName string
+	Issues      []string
+	Passed      bool
+}
+
+func (r ValidationReport) String() string {
+	if r.Passed {
+		return fmt.Sprintf("✓ %s — all checks passed", r.PaletteName)
+	}
+	out := fmt.Sprintf("✗ %s — %d issue(s):\n", r.PaletteName, len(r.Issues))
+	for _, issue := range r.Issues {
+		out += fmt.Sprintf("  • %s\n", issue)
+	}
+	return out
+}
+
 // Validate runs quality checks on the palette. Returns a Report.
 func (p *Palette) Validate() ValidationReport {
-	return validate(p)
+	var issues []string
+
+	tones := p.All()
+
+	// Minimum size
+	if len(tones) < 2 {
+		issues = append(issues, "palette should have at least 2 tones")
+	}
+
+	// Recommended size warning (not a hard failure)
+	if len(tones) > 16 {
+		issues = append(issues,
+			fmt.Sprintf("palette has %d tones — consider splitting into sub-palettes (recommended max: 16)", len(tones)),
+		)
+	}
+
+	// All tones must be in sRGB gamut
+	for _, t := range tones {
+		r, g, b := t.RGBFloat()
+		if r < -0.001 || r > 1.001 || g < -0.001 || g > 1.001 || b < -0.001 || b > 1.001 {
+			issues = append(issues,
+				fmt.Sprintf("tone %q is outside sRGB gamut — call ToGamutSafe or reduce Vibrancy", t.Name()),
+			)
+		}
+	}
+
+	// Adjacent tones should be perceptually distinct (ΔL ≥ 5)
+	for i := 1; i < len(tones); i++ {
+		prev, curr := tones[i-1], tones[i]
+		if absDiff(prev.Light(), curr.Light()) < 5 {
+			issues = append(issues,
+				fmt.Sprintf("tones %q and %q are very similar (ΔLight < 5) — may be hard to distinguish", prev.Name(), curr.Name()),
+			)
+		}
+	}
+
+	return ValidationReport{
+		PaletteName: p.Name(),
+		Issues:      issues,
+		Passed:      len(issues) == 0,
+	}
+}
+
+func absDiff(a, b float64) float64 {
+	if a > b {
+		return a - b
+	}
+	return b - a
 }

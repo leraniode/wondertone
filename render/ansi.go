@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	tone "github.com/leraniode/wondertone/core"
+	"github.com/leraniode/wondertone/tone"
 )
 
 // ANSI escape codes
@@ -186,8 +186,9 @@ func oklabDist(L1, a1, b1, L2, a2, b2 float64) float64 {
 // --- ANSI 16 color table ---
 // Standard terminal 16 colors in sRGB [0-255].
 // Order: black, red, green, yellow, blue, magenta, cyan, white,
-//        bright-black, bright-red, bright-green, bright-yellow,
-//        bright-blue, bright-magenta, bright-cyan, bright-white
+//
+//	bright-black, bright-red, bright-green, bright-yellow,
+//	bright-blue, bright-magenta, bright-cyan, bright-white
 var ansi16Colors = [16][3]uint8{
 	{0, 0, 0},       // 0  black
 	{170, 0, 0},     // 1  red

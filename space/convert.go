@@ -1,4 +1,4 @@
-package core
+package space
 
 // OKLCH ↔ OKLab ↔ Linear RGB ↔ sRGB pipeline.
 //
@@ -15,14 +15,14 @@ import "math"
 
 // oklchToOKLab converts OKLCH to OKLab cartesian coordinates.
 // H is in degrees [0–360).
-func oklchToOKLab(l, c, h float64) (L, a, b float64) {
+func OKLCHToOKLab(l, c, h float64) (L, a, b float64) {
 	hRad := h * math.Pi / 180.0
 	return l, c * math.Cos(hRad), c * math.Sin(hRad)
 }
 
 // oklabToOKLCH converts OKLab cartesian to OKLCH polar.
 // H returned in degrees [0–360).
-func oklabToOKLCH(L, a, b float64) (l, c, h float64) {
+func OKLabToOKLCH(L, a, b float64) (l, c, h float64) {
 	c = math.Sqrt(a*a + b*b)
 	h = math.Atan2(b, a) * 180.0 / math.Pi
 	if h < 0 {
@@ -35,7 +35,7 @@ func oklabToOKLCH(L, a, b float64) (l, c, h float64) {
 // Matrix coefficients from Björn Ottosson's OKLab specification.
 
 // oklabToLinearRGB converts OKLab to linear sRGB via the OKLab transform matrices.
-func oklabToLinearRGB(L, a, b float64) (r, g, bl float64) {
+func OKLabToLinearRGB(L, a, b float64) (r, g, bl float64) {
 	// Step 1: OKLab → LMS (cube-root space)
 	l_ := L + 0.3963377774*a + 0.2158037573*b
 	m_ := L - 0.1055613458*a - 0.0638541728*b
@@ -54,7 +54,7 @@ func oklabToLinearRGB(L, a, b float64) (r, g, bl float64) {
 }
 
 // linearRGBToOKLab converts linear sRGB to OKLab.
-func linearRGBToOKLab(r, g, b float64) (L, a, bl float64) {
+func LinearRGBToOKLab(r, g, b float64) (L, a, bl float64) {
 	// Step 1: Linear RGB → LMS
 	l := 0.4122214708*r + 0.5363325363*g + 0.0514459929*b
 	m := 0.2119034982*r + 0.6806995451*g + 0.1073969566*b
@@ -75,15 +75,15 @@ func linearRGBToOKLab(r, g, b float64) (L, a, bl float64) {
 // --- Top-level pipeline (OKLCH ↔ Linear RGB) ---
 
 // oklchToLinearRGB is the main forward pipeline: OKLCH → OKLab → Linear RGB.
-func oklchToLinearRGB(l, c, h float64) (r, g, b float64) {
-	L, a, bl := oklchToOKLab(l, c, h)
-	return oklabToLinearRGB(L, a, bl)
+func OKLCHToLinearRGB(l, c, h float64) (r, g, b float64) {
+	L, a, bl := OKLCHToOKLab(l, c, h)
+	return OKLabToLinearRGB(L, a, bl)
 }
 
 // linearRGBToOKLCH is the main reverse pipeline: Linear RGB → OKLab → OKLCH.
-func linearRGBToOKLCH(r, g, b float64) (l, c, h float64) {
-	L, a, bl := linearRGBToOKLab(r, g, b)
-	return oklabToOKLCH(L, a, bl)
+func LinearRGBToOKLCH(r, g, b float64) (l, c, h float64) {
+	L, a, bl := LinearRGBToOKLab(r, g, b)
+	return OKLabToOKLCH(L, a, bl)
 }
 
 // --- sRGB gamma encoding / decoding ---
@@ -91,7 +91,7 @@ func linearRGBToOKLCH(r, g, b float64) (l, c, h float64) {
 // linearToSRGB applies sRGB gamma encoding (linear → display-ready [0–1]).
 // Clamps input to [0,1] — gamut mapping guarantees this but float drift can
 // produce tiny excursions that the clamp absorbs cleanly.
-func linearToSRGB(v float64) float64 {
+func LinearToSRGB(v float64) float64 {
 	if v < 0 {
 		v = 0
 	} else if v > 1 {
@@ -104,7 +104,7 @@ func linearToSRGB(v float64) float64 {
 }
 
 // srgbToLinear applies sRGB gamma decoding (display-encoded → linear).
-func srgbToLinear(v float64) float64 {
+func SRGBToLinear(v float64) float64 {
 	if v < 0 {
 		v = 0
 	} else if v > 1 {
@@ -120,7 +120,7 @@ func srgbToLinear(v float64) float64 {
 
 // inSRGB reports whether linear RGB values are within the sRGB gamut.
 // A small epsilon absorbs floating-point rounding from the color math.
-func inSRGB(r, g, b float64) bool {
+func InSRGB(r, g, b float64) bool {
 	const eps = 1e-6
 	return r >= -eps && r <= 1+eps &&
 		g >= -eps && g <= 1+eps &&

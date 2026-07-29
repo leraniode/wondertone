@@ -1,11 +1,11 @@
-package core_test
+package tone_test
 
 import (
 	"math"
 	"testing"
 
-	tone "github.com/leraniode/wondertone/core"
-	"github.com/leraniode/x/wtone/testutil"
+	"github.com/leraniode/wondertone/tone"
+	"github.com/leraniode/x/testutil"
 )
 
 // --- Construction ---
@@ -315,59 +315,50 @@ func TestScaleStepClamping(t *testing.T) {
 	testutil.Equal(t, scale.Step(12).Hex(), scale.Step(99).Hex(), "Step(99) should clamp to Step(12)")
 }
 
-// --- Mix ---
-
-func TestMixMidpoint(t *testing.T) {
-	a := tone.New(tone.Light(30), tone.Vibrancy(50), tone.Hue(30))
-	b := tone.New(tone.Light(70), tone.Vibrancy(50), tone.Hue(90))
-	mid := tone.Mix(a, b, 0.5)
-	testutil.InDelta(t, 50.0, mid.Light(), 3.0, "midpoint Light should be ~50")
+// --- Tone method integration ---
+func TestToneTemperatureScalar(t *testing.T) {
+	warm := tone.New(tone.Light(65), tone.Vibrancy(70), tone.Hue(30))
+	cool := tone.New(tone.Light(65), tone.Vibrancy(70), tone.Hue(210))
+	if warm.TemperatureScalar() <= cool.TemperatureScalar() {
+		t.Errorf("warm tone (%.4f) should have higher T than cool (%.4f)",
+			warm.TemperatureScalar(), cool.TemperatureScalar())
+	}
 }
 
-func TestMixBoundaries(t *testing.T) {
-	a := tone.New(tone.Light(30), tone.Hue(30))
-	b := tone.New(tone.Light(70), tone.Hue(90))
-	testutil.Equal(t, a.Hex(), tone.Mix(a, b, 0).Hex(), "Mix(a,b,0) should equal a")
-	testutil.Equal(t, b.Hex(), tone.Mix(a, b, 1).Hex(), "Mix(a,b,1) should equal b")
+func TestToneDerivedMoodIsNonEmpty(t *testing.T) {
+	tones := []tone.Tone{
+		tone.New(tone.Light(80), tone.Vibrancy(90), tone.Hue(40), tone.Energy(1.0)),
+		tone.New(tone.Light(20), tone.Vibrancy(30), tone.Hue(220), tone.Energy(0.3)),
+		tone.New(tone.Light(50), tone.Vibrancy(5), tone.Hue(0)),
+	}
+	for _, tone := range tones {
+		if tone.DerivedMoodValue() == "" {
+			t.Errorf("DerivedMoodValue should never be empty, got empty for %s", tone.Hex())
+		}
+	}
 }
 
-func TestGradient(t *testing.T) {
-	a := tone.New(tone.Light(20), tone.Hue(30))
-	b := tone.New(tone.Light(80), tone.Hue(200))
-	grad, err := tone.Gradient(a, b, 10)
-	testutil.NoError(t, err)
-	testutil.Equal(t, 10, len(grad))
-	testutil.Equal(t, a.Hex(), grad[0].Hex())
-	testutil.Equal(t, b.Hex(), grad[9].Hex())
+func TestToneValenceAndArousalInRange(t *testing.T) {
+	tn := tone.New(tone.Light(70), tone.Vibrancy(80), tone.Hue(30), tone.Energy(0.9))
+	v := tn.ValenceValue()
+	a := tn.ArousalValue()
+	if v < -1 || v > 1 {
+		t.Errorf("ValenceValue %.4f out of [-1,1]", v)
+	}
+	if a < -1 || a > 1 {
+		t.Errorf("ArousalValue %.4f out of [-1,1]", a)
+	}
 }
 
-func TestGradientTooFewSteps(t *testing.T) {
-	a := tone.New(tone.Light(20), tone.Hue(30))
-	b := tone.New(tone.Light(80), tone.Hue(200))
-	_, err := tone.Gradient(a, b, 1)
-	testutil.Error(t, err)
-}
-
-func TestHarmonize(t *testing.T) {
-	base := tone.New(tone.Light(50), tone.Vibrancy(80), tone.Hue(30))
-
-	comp, err := tone.Harmonize(base, "complement")
-	testutil.NoError(t, err)
-	testutil.Equal(t, 2, len(comp))
-	testutil.InDelta(t, 210.0, comp[1].Hue(), 1e-3)
-
-	triadic, err := tone.Harmonize(base, "triadic")
-	testutil.NoError(t, err)
-	testutil.Equal(t, 3, len(triadic))
-
-	_, err = tone.Harmonize(base, "unknown")
-	testutil.Error(t, err)
-}
-
-func TestEqual(t *testing.T) {
-	a := tone.New(tone.Light(50), tone.Vibrancy(80), tone.Hue(30))
-	b := tone.New(tone.Light(50), tone.Vibrancy(80), tone.Hue(30))
-	c := tone.New(tone.Light(60), tone.Vibrancy(80), tone.Hue(30))
-	testutil.True(t, a.Equal(b), "same tones should be equal")
-	testutil.False(t, a.Equal(c), "different tones should not be equal")
+func TestToneEffectiveCUsesStevensLaw(t *testing.T) {
+	base := tone.New(tone.Light(60), tone.Vibrancy(80), tone.Hue(142))
+	half := base.WithEnergy(0.5)
+	// With γ=0.7: E=0.5 → 0.5^0.7 ≈ 0.615 of base C
+	// Must be more than linear 0.5× but less than full
+	if half.EffectiveC() <= base.EffectiveC()*0.5 {
+		t.Errorf("Stevens law: E=0.5 effective C should be > linear half")
+	}
+	if half.EffectiveC() >= base.EffectiveC() {
+		t.Errorf("E=0.5 should reduce chroma vs E=1.0")
+	}
 }

@@ -1,4 +1,4 @@
-package core
+package space
 
 import (
 	"math"
@@ -56,7 +56,7 @@ func TestPerceivedChromaZeroVibrancyIsZero(t *testing.T) {
 func TestPerceivedChromaIsLessThanRawForYellow(t *testing.T) {
 	// Yellow (H≈60) has k(H) < 1 — should produce less chroma than linear
 	cWonder := PerceivedChroma(80, 0.7, 60)
-	maxC := maxChromaForLH(0.7, 60)
+	maxC := MaxChromaForLH(0.7, 60)
 	cLinear := maxC * 0.80
 	if cWonder >= cLinear {
 		t.Errorf("yellow V=80: WonderMath (%.6f) should be < linear (%.6f)", cWonder, cLinear)
@@ -66,7 +66,7 @@ func TestPerceivedChromaIsLessThanRawForYellow(t *testing.T) {
 func TestPerceivedChromaIsMoreThanRawForBlue(t *testing.T) {
 	// Blue (H≈240) has k(H) > 1 — should produce more chroma than linear
 	cWonder := PerceivedChroma(80, 0.5, 240)
-	maxC := maxChromaForLH(0.5, 240)
+	maxC := MaxChromaForLH(0.5, 240)
 	cLinear := maxC * 0.80
 	if cWonder <= cLinear {
 		t.Errorf("blue V=80: WonderMath (%.6f) should be > linear (%.6f)", cWonder, cLinear)
@@ -242,54 +242,5 @@ func TestDerivedMoodNeverEmpty(t *testing.T) {
 				}
 			}
 		}
-	}
-}
-
-// --- Tone method integration ---
-
-func TestToneTemperatureScalar(t *testing.T) {
-	warm := New(Light(65), Vibrancy(70), Hue(30))
-	cool := New(Light(65), Vibrancy(70), Hue(210))
-	if warm.TemperatureScalar() <= cool.TemperatureScalar() {
-		t.Errorf("warm tone (%.4f) should have higher T than cool (%.4f)",
-			warm.TemperatureScalar(), cool.TemperatureScalar())
-	}
-}
-
-func TestToneDerivedMoodIsNonEmpty(t *testing.T) {
-	tones := []Tone{
-		New(Light(80), Vibrancy(90), Hue(40), Energy(1.0)),
-		New(Light(20), Vibrancy(30), Hue(220), Energy(0.3)),
-		New(Light(50), Vibrancy(5), Hue(0)),
-	}
-	for _, tone := range tones {
-		if tone.DerivedMoodValue() == "" {
-			t.Errorf("DerivedMoodValue should never be empty, got empty for %s", tone.Hex())
-		}
-	}
-}
-
-func TestToneValenceAndArousalInRange(t *testing.T) {
-	tone := New(Light(70), Vibrancy(80), Hue(30), Energy(0.9))
-	v := tone.ValenceValue()
-	a := tone.ArousalValue()
-	if v < -1 || v > 1 {
-		t.Errorf("ValenceValue %.4f out of [-1,1]", v)
-	}
-	if a < -1 || a > 1 {
-		t.Errorf("ArousalValue %.4f out of [-1,1]", a)
-	}
-}
-
-func TestToneEffectiveCUsesStevensLaw(t *testing.T) {
-	base := New(Light(60), Vibrancy(80), Hue(142))
-	half := base.WithEnergy(0.5)
-	// With γ=0.7: E=0.5 → 0.5^0.7 ≈ 0.615 of base C
-	// Must be more than linear 0.5× but less than full
-	if half.EffectiveC() <= base.EffectiveC()*0.5 {
-		t.Errorf("Stevens law: E=0.5 effective C should be > linear half")
-	}
-	if half.EffectiveC() >= base.EffectiveC() {
-		t.Errorf("E=0.5 should reduce chroma vs E=1.0")
 	}
 }

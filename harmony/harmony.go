@@ -1,15 +1,25 @@
-package palette
+// Package harmony generates harmonically related Tone collections.
+//
+// All generators return a Palette built from hue relationships in OKLCH space.
+// Lightness, Vibrancy, and Energy are preserved from the base Tone — only Hue varies.
+//
+//	import "github.com/leraniode/wondertone/harmony"
+//
+//	triad, err := harmony.Triadic(base)
+//	comp,  err := harmony.Complementary(base)
+package harmony
 
 import (
 	"fmt"
 
-	tone "github.com/leraniode/wondertone/core"
+	"github.com/leraniode/wondertone/palette"
+	"github.com/leraniode/wondertone/tone"
 )
 
 // Analogous returns a palette of tones adjacent on the hue wheel.
 // count tones, spread degrees apart, centered on the base tone.
 // e.g. Analogous(base, 5, 30) gives 5 tones, 30° apart, centered on base.
-func Analogous(base tone.Tone, count int, spreadDeg float64) (*Palette, error) {
+func Analogous(base tone.Tone, count int, spreadDeg float64) (*palette.Palette, error) {
 	if count < 2 {
 		return nil, fmt.Errorf("wondertone/palette: Analogous needs at least 2 tones")
 	}
@@ -25,7 +35,7 @@ func Analogous(base tone.Tone, count int, spreadDeg float64) (*Palette, error) {
 }
 
 // Complementary returns a two-tone palette of a base and its complement (+180°).
-func Complementary(base tone.Tone) (*Palette, error) {
+func Complementary(base tone.Tone) (*palette.Palette, error) {
 	comp := base.Complement().
 		WithName(fmt.Sprintf("%s complement", base.Name())).
 		WithMood(base.Mood())
@@ -33,7 +43,7 @@ func Complementary(base tone.Tone) (*Palette, error) {
 }
 
 // Triadic returns a three-tone palette evenly spaced 120° apart.
-func Triadic(base tone.Tone) (*Palette, error) {
+func Triadic(base tone.Tone) (*palette.Palette, error) {
 	tones := []tone.Tone{
 		base,
 		base.Rotate(120).WithName(fmt.Sprintf("%s triadic-2", base.Name())),
@@ -44,7 +54,7 @@ func Triadic(base tone.Tone) (*Palette, error) {
 
 // SplitComplementary returns a three-tone palette — base plus two tones
 // flanking its complement at ±splitDeg.
-func SplitComplementary(base tone.Tone, splitDeg float64) (*Palette, error) {
+func SplitComplementary(base tone.Tone, splitDeg float64) (*palette.Palette, error) {
 	if splitDeg <= 0 || splitDeg >= 90 {
 		return nil, fmt.Errorf("wondertone/palette: SplitComplementary splitDeg must be in (0, 90)")
 	}
@@ -57,7 +67,7 @@ func SplitComplementary(base tone.Tone, splitDeg float64) (*Palette, error) {
 }
 
 // Tetradic returns a four-tone palette evenly spaced 90° apart.
-func Tetradic(base tone.Tone) (*Palette, error) {
+func Tetradic(base tone.Tone) (*palette.Palette, error) {
 	tones := []tone.Tone{
 		base,
 		base.Rotate(90).WithName(fmt.Sprintf("%s tetradic-2", base.Name())),
@@ -69,7 +79,7 @@ func Tetradic(base tone.Tone) (*Palette, error) {
 
 // Monochrome returns a palette of count tones from the same hue,
 // evenly distributed across the lightness scale.
-func Monochrome(base tone.Tone, count int) (*Palette, error) {
+func Monochrome(base tone.Tone, count int) (*palette.Palette, error) {
 	if count < 2 {
 		return nil, fmt.Errorf("wondertone/palette: Monochrome needs at least 2 tones")
 	}
@@ -86,7 +96,7 @@ func Monochrome(base tone.Tone, count int) (*Palette, error) {
 // Rainbow returns a palette of count tones, evenly distributed around the
 // full hue wheel, at the same lightness and vibrancy as the base tone.
 // The first tone starts at the base hue.
-func Rainbow(base tone.Tone, count int) (*Palette, error) {
+func Rainbow(base tone.Tone, count int) (*palette.Palette, error) {
 	if count < 2 {
 		return nil, fmt.Errorf("wondertone/palette: Rainbow needs at least 2 tones")
 	}
@@ -100,8 +110,8 @@ func Rainbow(base tone.Tone, count int) (*Palette, error) {
 }
 
 // fromSlice builds a Palette from a pre-built slice of Tones.
-func fromSlice(name string, tones []tone.Tone) (*Palette, error) {
-	b := New(name)
+func fromSlice(name string, tones []tone.Tone) (*palette.Palette, error) {
+	b := palette.New(name)
 	for _, t := range tones {
 		b.Add(t)
 	}

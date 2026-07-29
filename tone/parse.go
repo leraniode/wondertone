@@ -1,10 +1,12 @@
-package core
+package tone
 
 import (
 	"fmt"
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/leraniode/wondertone/space"
 )
 
 // parseHex parses a CSS hex string into linear sRGB + alpha [0–1].
@@ -45,7 +47,7 @@ func parseHex(s string) (r, g, b, a float64, err error) {
 	}
 
 	// sRGB → linear for the internal pipeline
-	return srgbToLinear(sr), srgbToLinear(sg), srgbToLinear(sb), a, nil
+	return space.SRGBToLinear(sr), space.SRGBToLinear(sg), space.SRGBToLinear(sb), a, nil
 }
 
 // parseOKLCHString parses "L C H" or "L C H / A" strings.

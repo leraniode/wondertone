@@ -1,4 +1,4 @@
-package core
+package space
 
 // Gamut safety — keeps every Tone inside the sRGB display gamut.
 //
@@ -14,15 +14,15 @@ package core
 //
 // In practice this converges in <20 iterations for any real color.
 // Worst case (a vivid hue at an extreme lightness) takes ~115 iterations.
-func toGamutSafe(l, c, h float64) (float64, float64, float64) {
-	r, g, b := oklchToLinearRGB(l, c, h)
-	if inSRGB(r, g, b) {
+func ToGamutSafe(l, c, h float64) (float64, float64, float64) {
+	r, g, b := OKLCHToLinearRGB(l, c, h)
+	if InSRGB(r, g, b) {
 		return l, c, h
 	}
 	for c > 0.001 {
 		c *= 0.98
-		r, g, b = oklchToLinearRGB(l, c, h)
-		if inSRGB(r, g, b) {
+		r, g, b = OKLCHToLinearRGB(l, c, h)
+		if InSRGB(r, g, b) {
 			return l, c, h
 		}
 	}
@@ -35,7 +35,7 @@ func toGamutSafe(l, c, h float64) (float64, float64, float64) {
 //
 // Binary search — 24 iterations gives precision of ~0.00000006.
 // This is called once at Tone construction time, not at render time.
-func maxChromaForLH(l, h float64) float64 {
+func MaxChromaForLH(l, h float64) float64 {
 	const (
 		iterations = 24
 		ceiling    = 0.5 // practical upper bound; sRGB never exceeds ~0.37
@@ -43,8 +43,8 @@ func maxChromaForLH(l, h float64) float64 {
 	lo, hi := 0.0, ceiling
 	for i := 0; i < iterations; i++ {
 		mid := (lo + hi) / 2
-		r, g, b := oklchToLinearRGB(l, mid, h)
-		if inSRGB(r, g, b) {
+		r, g, b := OKLCHToLinearRGB(l, mid, h)
+		if InSRGB(r, g, b) {
 			lo = mid
 		} else {
 			hi = mid

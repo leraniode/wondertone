@@ -1,36 +1,39 @@
-package core
+package tone
+
+import "github.com/leraniode/wondertone/space"
 
 // ToneScale is a 12-step perceptual ladder from a single base Tone.
 // Hue never drifts. Every step is in sRGB gamut.
 //
 // Step roles (1=lightest, 12=darkest):
-//   1  Page background         — barely tinted white
-//   2  Subtle background       — stripes, alternating rows
-//   3  UI element background   — cards, inputs
-//   4  Hovered element bg      — hover state
-//   5  Active/selected bg      — selected state
-//   6  Subtle border           — separators
-//   7  UI border               — input borders
-//   8  Strong border           — focus rings
-//   9  Solid bg                — buttons, badges — base tone lives here
-//  10  Hovered solid           — button hover
-//  11  Text                    — readable on light backgrounds
-//  12  High-contrast text      — headings, emphasis
+//
+//	 1  Page background         — barely tinted white
+//	 2  Subtle background       — stripes, alternating rows
+//	 3  UI element background   — cards, inputs
+//	 4  Hovered element bg      — hover state
+//	 5  Active/selected bg      — selected state
+//	 6  Subtle border           — separators
+//	 7  UI border               — input borders
+//	 8  Strong border           — focus rings
+//	 9  Solid bg                — buttons, badges — base tone lives here
+//	10  Hovered solid           — button hover
+//	11  Text                    — readable on light backgrounds
+//	12  High-contrast text      — headings, emphasis
 type ToneScale [12]Tone
 
 // Semantic accessors — named by their UI role.
-func (s ToneScale) Background() Tone      { return s[0] }
-func (s ToneScale) SubtleBackground() Tone { return s[1] }
+func (s ToneScale) Background() Tone        { return s[0] }
+func (s ToneScale) SubtleBackground() Tone  { return s[1] }
 func (s ToneScale) ElementBackground() Tone { return s[2] }
 func (s ToneScale) HoveredBackground() Tone { return s[3] }
 func (s ToneScale) ActiveBackground() Tone  { return s[4] }
-func (s ToneScale) SubtleBorder() Tone     { return s[5] }
-func (s ToneScale) Border() Tone           { return s[6] }
-func (s ToneScale) StrongBorder() Tone     { return s[7] }
-func (s ToneScale) Solid() Tone            { return s[8] }
-func (s ToneScale) HoveredSolid() Tone     { return s[9] }
-func (s ToneScale) Text() Tone             { return s[10] }
-func (s ToneScale) HighContrastText() Tone { return s[11] }
+func (s ToneScale) SubtleBorder() Tone      { return s[5] }
+func (s ToneScale) Border() Tone            { return s[6] }
+func (s ToneScale) StrongBorder() Tone      { return s[7] }
+func (s ToneScale) Solid() Tone             { return s[8] }
+func (s ToneScale) HoveredSolid() Tone      { return s[9] }
+func (s ToneScale) Text() Tone              { return s[10] }
+func (s ToneScale) HighContrastText() Tone  { return s[11] }
 
 // Step returns a tone by 1-based step number [1–12]. Clamped at edges.
 func (s ToneScale) Step(n int) Tone {
@@ -77,7 +80,7 @@ func generateScale(base Tone) ToneScale {
 		H := base.hue
 
 		// Max chroma at this exact (L, H) — varies per hue.
-		maxC := maxChromaForLH(L, H)
+		maxC := space.MaxChromaForLH(L, H)
 
 		// Scale by both the vibrancy table and the base tone's own vibrancy.
 		// A muted base (vibrancy=40) produces a muted scale. Vivid produces vivid.
@@ -87,7 +90,7 @@ func generateScale(base Tone) ToneScale {
 		light := L * 100
 		vibrancy := 0.0
 		if maxC > 0 {
-			vibrancy = clamp((c/maxC)*100, 0, 100)
+			vibrancy = space.Clamp((c/maxC)*100, 0, 100)
 		}
 
 		scale[i] = Tone{

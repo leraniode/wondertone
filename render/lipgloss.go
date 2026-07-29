@@ -3,7 +3,7 @@ package render
 import (
 	"fmt"
 
-	tone "github.com/leraniode/wondertone/core"
+	"github.com/leraniode/wondertone/tone"
 )
 
 // LipglossColor converts a Tone to a lipgloss-compatible color value string.
