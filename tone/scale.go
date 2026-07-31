@@ -1,6 +1,10 @@
 package tone
 
-import "github.com/leraniode/wondertone/space"
+import (
+	"math"
+
+	"github.com/leraniode/wondertone/space"
+)
 
 // ToneScale is a 12-step perceptual ladder from a single base Tone.
 // Hue never drifts. Every step is in sRGB gamut.
@@ -49,9 +53,7 @@ func (s ToneScale) Step(n int) Tone {
 // All returns all 12 tones as a slice (lightest to darkest).
 func (s ToneScale) All() []Tone {
 	out := make([]Tone, 12)
-	for i, t := range s {
-		out[i] = t
-	}
+	copy(out, s[:])
 	return out
 }
 
@@ -68,6 +70,31 @@ var lightnessTable = [12]float64{
 var vibrantTable = [12]float64{
 	0.08, 0.12, 0.20, 0.35, 0.50, 0.65,
 	0.80, 0.92, 1.00, 0.95, 0.80, 0.65,
+}
+
+// Scale returns the 12-step perceptual tone scale for this Tone.
+// Step 9 is the "pure" tone — closest to the original.
+func (t Tone) Scale() ToneScale {
+	return generateScale(t)
+}
+
+// Step returns a single step from the 12-step scale [1–12].
+// 1=lightest, 12=darkest.
+func (t Tone) Step(n int) Tone {
+	return t.Scale().Step(n)
+}
+
+// --- Equality ---
+
+// Equal reports whether two Tones are perceptually identical
+// within floating-point tolerance.
+func (t Tone) Equal(other Tone) bool {
+	const eps = 1e-4
+	return math.Abs(t.l-other.l) < eps &&
+		math.Abs(t.c-other.c) < eps &&
+		math.Abs(t.hue-other.hue) < eps &&
+		math.Abs(t.a-other.a) < eps &&
+		math.Abs(t.energy-other.energy) < eps
 }
 
 // generateScale builds the 12-step ToneScale for a base Tone.

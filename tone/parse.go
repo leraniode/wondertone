@@ -51,7 +51,6 @@ func parseHex(s string) (r, g, b, a float64, err error) {
 }
 
 // parseOKLCHString parses "L C H" or "L C H / A" strings.
-// These are the values stored in .wtone files.
 func parseOKLCHString(s string) (l, c, h, a float64, err error) {
 	s = strings.TrimSpace(s)
 	// Strip optional oklch() wrapper
@@ -83,7 +82,7 @@ func parseOKLCHString(s string) (l, c, h, a float64, err error) {
 	return l, c, h, a, nil
 }
 
-// formatOKLCHString formats OKLCH values into the canonical .wtone string.
+// formatOKLCHString formats OKLCH values into a string.
 // 6 decimal places: full precision, human readable.
 func formatOKLCHString(l, c, h, a float64) string {
 	round := func(v float64) float64 { return math.Round(v*1e6) / 1e6 }
@@ -92,4 +91,26 @@ func formatOKLCHString(l, c, h, a float64) string {
 		return fmt.Sprintf("%g %g %g", l, c, h)
 	}
 	return fmt.Sprintf("%g %g %g / %g", l, c, h, round(a))
+}
+
+// toSRGB converts to gamma-encoded sRGB [0–1], gamut-safe.
+// Full WonderMath pipeline applied at render time:
+//  1. CorrectedHue       — fix blue-purple drift
+//  2. EffectiveChroma    — Stevens' power law energy scaling
+//  3. EffectiveLightness — subtle glow at high energy
+func (t Tone) toSRGB() (r, g, b float64) {
+	h := space.CorrectedHue(t.hue, t.c, t.l)
+	c := space.EffectiveChroma(t.c, t.energy)
+	l := space.EffectiveLightness(t.l, t.energy)
+	l, c, h = space.ToGamutSafe(l, c, h)
+	lr, lg, lb := space.OKLCHToLinearRGB(l, c, h)
+	return space.LinearToSRGB(lr), space.LinearToSRGB(lg), space.LinearToSRGB(lb)
+}
+
+// fromLinearRGB constructs a Tone from linear sRGB [0–1] values.
+func fromLinearRGB(r, g, b, a float64) Tone {
+	l, c, h := space.LinearRGBToOKLCH(r, g, b)
+	t := FromOKLCH(l, c, h)
+	t.a = space.Clamp(a, 0, 1)
+	return t
 }
