@@ -3,6 +3,7 @@ package render
 import (
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/leraniode/wondertone/tone"
 )
@@ -43,11 +44,8 @@ func Swatch(t tone.Tone, p Profile, width int) string {
 	if width <= 0 {
 		width = 2
 	}
-	block := ""
-	for i := 0; i < width; i++ {
-		block += "█"
-	}
-	return BG(t, p) + "  " + Reset + " " + FG(t, p) + block + Reset
+
+	return FG(t, p) + strings.Repeat("█", width) + Reset
 }
 
 // colorSequence builds the raw ANSI escape sequence.
