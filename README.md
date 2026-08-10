@@ -1,6 +1,6 @@
 <p align="left">
     <a href="https://github.com/leraniode/wondertone">
-        <img src="https://raw.githubusercontent.com/leraniode/.github/main/assets/images/wondertone.svg"/>
+        <img src="https://raw.githubusercontent.com/leraniode/.github/main/images/wondertone.svg"/>
     </a>
 </p>
 

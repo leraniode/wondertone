@@ -2,8 +2,6 @@ package space
 
 import "math"
 
-// --- Helpers ---
-
 // normalizedSaturation returns C / C_max — the normalised saturation [0,1]
 // used in the mood formulas. Same as Vibrancy/100 but computed from raw C.
 func NormalizedSaturation(c, l, h float64) float64 {
