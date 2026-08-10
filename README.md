@@ -4,7 +4,7 @@
     </a>
 </p>
 
-# ✨ wondertone 🌈🎨
+# Wondertone 🎨
 
 A perceptual color intelligence library for Go — OKLCH under the hood, a human vocabulary on the surface.
 
